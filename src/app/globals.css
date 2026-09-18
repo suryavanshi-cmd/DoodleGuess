@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+/* Dark mode is an explicit choice stored per browser, not a media query, so the
+   toggle always wins. The inline script in layout.tsx sets data-theme early. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  --bg: #f6f4ff;
+  --bg-accent: #ede9fe;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e2e8f0;
+  --fg: #0f172a;
+  --fg-muted: #64748b;
+  --brand: #7c3aed;
+  --brand-fg: #ffffff;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+}
+
+[data-theme="dark"] {
+  --bg: #0b1020;
+  --bg-accent: #141a32;
+  --surface: #151b30;
+  --surface-2: #1c2440;
+  --border: #2a3454;
+  --fg: #e8ecf8;
+  --fg-muted: #93a0c0;
+  --brand: #a78bfa;
+  --brand-fg: #14102a;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-accent: var(--bg-accent);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-brand: var(--brand);
+  --color-brand-fg: var(--brand-fg);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  min-height: 100dvh;
+  background-image: radial-gradient(60rem 40rem at 110% -10%, var(--bg-accent), transparent 60%);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* `btn` is registered as a real utility so the variants below can @apply it. */
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5
+         text-base font-semibold transition active:scale-[0.98]
+         disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-line bg-surface shadow-sm;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-brand-fg hover:brightness-110;
+  }
+  .btn-ghost {
+    @apply btn border border-line bg-surface text-fg hover:bg-surface-2;
+  }
+  .input {
+    @apply min-h-11 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-base
+           text-fg outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/30;
+  }
+  .label {
+    @apply text-sm font-semibold text-muted;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1 text-sm font-medium;
+  }
+}
+
+@keyframes float-up {
+  0% { transform: translateY(0) scale(0.7); opacity: 0; }
+  15% { opacity: 1; transform: translateY(-10%) scale(1.1); }
+  100% { transform: translateY(-220%) scale(1.3); opacity: 0; }
+}
+.animate-float-up { animation: float-up 2.2s ease-out forwards; }
+
+@keyframes pop-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.animate-pop-in { animation: pop-in 0.22s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-up, .animate-pop-in { animation: none; }
+}
+
+.canvas-surface {
+  touch-action: none;
+  background: #ffffff;
+}

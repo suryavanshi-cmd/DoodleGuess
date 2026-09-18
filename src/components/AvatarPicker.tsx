@@ -1,0 +1,59 @@
+"use client";
+
+import type { Avatar } from "@/lib/game/types";
+
+const EMOJI = ["🦊", "🐼", "🐸", "🐙", "🦖", "🐝", "🦄", "🐧", "🐨", "🦉", "🐳", "🍕", "🚀", "🌈"];
+const COLORS = ["#f97316", "#14b8a6", "#6366f1", "#ec4899", "#22c55e", "#eab308", "#06b6d4", "#a855f7"];
+
+export function AvatarBadge({ avatar, size = 40, ring }: { avatar: Avatar; size?: number; ring?: boolean }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center justify-center rounded-full ${ring ? "ring-2 ring-brand" : ""}`}
+      style={{ background: avatar.color, width: size, height: size, fontSize: size * 0.55 }}
+      aria-hidden
+    >
+      {avatar.emoji}
+    </span>
+  );
+}
+
+export function AvatarPicker({ value, onChange }: { value: Avatar; onChange: (next: Avatar) => void }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <span className="label">Pick a character</span>
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          {EMOJI.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => onChange({ ...value, emoji })}
+              aria-label={`Avatar ${emoji}`}
+              aria-pressed={value.emoji === emoji}
+              className={`flex h-11 w-11 items-center justify-center rounded-xl border text-xl transition
+                ${value.emoji === emoji ? "border-brand bg-brand/10" : "border-line bg-surface-2"}`}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <span className="label">Pick a colour</span>
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          {COLORS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => onChange({ ...value, color })}
+              aria-label={`Colour ${color}`}
+              aria-pressed={value.color === color}
+              className={`h-11 w-11 rounded-xl border-2 transition ${value.color === color ? "border-fg scale-105" : "border-transparent"}`}
+              style={{ background: color }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
