@@ -71,7 +71,9 @@ export function Lobby({ room, onLeave }: { room: Room; onLeave: () => void }) {
           <SettingsForm
             settings={state.settings}
             disabled={!isHost}
-            onChange={(next) => void actions.updateSettings(next)}
+            // Passed through rather than discarded: the form holds its draft
+            // until this resolves, which is what stops the snap-back.
+            onChange={(next) => actions.updateSettings(next)}
           />
         </div>
 

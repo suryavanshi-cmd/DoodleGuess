@@ -239,8 +239,11 @@ export function useRoom(code: string) {
 
   const actions = useMemo(() => ({
     start: () => withSession((s) => api.start(code, s))(),
+    // Returns the refresh, so a caller awaiting this knows the client has the
+    // server's answer — not merely that the write was accepted. An optimistic
+    // form that drops its draft on the write alone flashes the old value.
     updateSettings: (settings: unknown) => withSession((s) => api.settings(code, s, settings))()
-      .then(() => { void refresh(); }),
+      .then(() => refresh()),
     choose: (roundId: string, index: number) => withSession((s) => api.choose(code, s, roundId, index))()
       .then((next) => {
         if (next && !isStale(next, lastSnapshotRef)) {

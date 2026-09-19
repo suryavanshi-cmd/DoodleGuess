@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { DoodleModelCredit } from "./AiGuess";
 import { LIMITS, type GameMode, type RoomSettings } from "@/lib/game/settings";
 
@@ -30,12 +31,45 @@ function Toggle({ label, hint, checked, disabled, onChange }: {
   );
 }
 
-export function SettingsForm({ settings, disabled, onChange }: {
+/** Long enough to swallow a drag, short enough to feel immediate on release. */
+const COMMIT_MS = 180;
+
+export function SettingsForm({ settings: serverSettings, disabled, onChange }: {
   settings: RoomSettings;
   disabled?: boolean;
-  onChange: (next: RoomSettings) => void;
+  onChange: (next: RoomSettings) => void | Promise<unknown>;
 }) {
-  const patch = (next: Partial<RoomSettings>) => onChange({ ...settings, ...next });
+  /**
+   * Controls used to render straight from server state, which meant a slider
+   * could not move until a round trip came back: dragging one fired a write per
+   * pixel and the thumb sat still until the last reply landed. The draft is what
+   * the controls show while an edit is in flight, so they respond to the finger
+   * rather than the network, and the writes are coalesced into one.
+   */
+  const [draft, setDraft] = useState<RoomSettings | null>(null);
+  const settings = draft ?? serverSettings;
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Identifies the newest edit, so a slow reply cannot clear a fresher draft. */
+  const editId = useRef(0);
+
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  const patch = (next: Partial<RoomSettings>) => {
+    const merged = { ...settings, ...next };
+    setDraft(merged);
+
+    const id = (editId.current += 1);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      void Promise.resolve(onChange(merged)).finally(() => {
+        // Hand control back to the server, unless the player has moved on.
+        if (editId.current === id) setDraft(null);
+      });
+    }, COMMIT_MS);
+  };
 
   const MODES: { id: GameMode; label: string; icon: string; hint: string }[] = [
     { id: "draw", label: "Draw it", icon: "🎨", hint: "Sketch the word on the canvas" },
