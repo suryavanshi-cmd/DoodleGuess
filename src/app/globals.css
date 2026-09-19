@@ -105,6 +105,13 @@ html, body {
   color: #0b1a33;
 }
 
+/* Arcade HUD type. Press Start 2P is wide and has no lowercase rhythm, so it
+   is only ever used for short uppercase labels and numbers, never body text. */
+@utility font-pixel {
+  font-family: var(--font-pixel), ui-monospace, monospace;
+  letter-spacing: 0;
+}
+
 @utility font-display {
   font-family: var(--font-display);
   /* Wide tracking is the whole character of this style. */

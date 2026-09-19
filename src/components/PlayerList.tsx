@@ -5,8 +5,47 @@ import { POWER_UP_COSTS } from "@/lib/game/scoring";
 import type { PublicPlayer } from "@/lib/game/types";
 
 /**
- * Phone layout: the roster as a single scrollable rail, so scores stay visible
- * without costing a screenful of height.
+ * Phone layout: the roster as a scrolling column beside the chat, rank on the
+ * left and the avatar on the right so names and scores share the middle and
+ * stay readable at speed.
+ */
+export function PlayerColumn({ players, meId, drawerId }: {
+  players: PublicPlayer[];
+  meId: string | null;
+  drawerId: string | null;
+}) {
+  // Ranks come from the score order; the rows keep table order so a player's
+  // row does not jump around underneath a thumb mid-round.
+  const rankOf = new Map(
+    [...players].sort((a, b) => b.score - a.score).map((player, index) => [player.id, index + 1]),
+  );
+
+  return (
+    <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
+      {players.map((player) => (
+        <li
+          key={player.id}
+          className={`flex items-center gap-1.5 px-1.5 py-1
+            ${player.guessedCorrect ? "bg-success/15" : player.id === meId ? "bg-brand/15" : ""}
+            ${player.connected ? "" : "opacity-50"}`}
+        >
+          <span className="font-pixel w-7 shrink-0 text-[8px] text-muted">#{rankOf.get(player.id)}</span>
+          <span className="min-w-0 flex-1 text-center leading-tight">
+            <span className="block truncate text-xs font-bold">
+              {player.id === meId ? `${player.name} (You)` : player.name}
+            </span>
+            <span className="block text-[10px] text-muted">{player.score} points</span>
+          </span>
+          {player.id === drawerId ? <span className="shrink-0 text-xs" title="Drawing">✏️</span> : null}
+          <AvatarBadge avatar={player.avatar} size={26} ring={player.id === drawerId} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Compact rail kept for the lobby and any layout without room for a column.
  */
 export function PlayerStrip({ players, meId, drawerId }: {
   players: PublicPlayer[];

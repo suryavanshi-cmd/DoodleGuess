@@ -36,22 +36,13 @@ interface Toast {
   leaving: boolean;
 }
 
-/** A verdict keeps its colour as a left edge, so the glass stays glass. */
-function accentFor(kind: FeedKind): string {
+/** Text colour inside the pill. The pill itself stays dark for contrast. */
+function toneFor(kind: FeedKind): string {
   switch (kind) {
-    case "correct": return "#12805c";
-    case "synonym": case "close": return "#9a6200";
-    case "join": case "leave": return "#55708f";
-    default: return "#0e5fd8";
-  }
-}
-
-function labelFor(entry: FeedEntry): string | null {
-  switch (entry.kind) {
-    case "correct": return "got it";
-    case "synonym": return "very close";
-    case "close": return "close";
-    default: return null;
+    case "correct": return "text-[#4ade80] font-bold";
+    case "synonym": case "close": return "text-[#fbbf24] font-semibold";
+    case "join": case "leave": return "text-white/60";
+    default: return "text-white";
   }
 }
 
@@ -124,38 +115,30 @@ export function ToastFeed({ entries, className = "" }: ToastFeedProps) {
 
   return (
     <ul
-      className={`pointer-events-none absolute right-2 top-2 z-30 flex w-[min(78%,19rem)] flex-col
-        items-stretch gap-1.5 ${className}`}
+      className={`pointer-events-none absolute inset-x-2 bottom-2 z-30 flex flex-col items-end gap-1
+        ${className}`}
       aria-live="polite"
       aria-relevant="additions"
     >
       {toasts.map((toast) => (
         <li
           key={toast.entry.id}
-          // 1fr -> 0fr animates the height with no measuring, so the cards
-          // below close up smoothly instead of jumping.
-          className={`toast-row grid ${toast.leaving ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr]"}`}
+          // 1fr -> 0fr animates the height with no measuring, so the pills
+          // above close up smoothly instead of jumping.
+          className={`toast-row grid max-w-[88%] ${toast.leaving ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr]"}`}
         >
           <div className="overflow-hidden">
             <div
-              className={`glass flex items-center gap-2 rounded-xl border-l-4 px-2.5 py-1.5
-                backdrop-blur-md backdrop-saturate-150
-                ${toast.leaving ? "toast-leaving" : "animate-toast-in"}`}
-              style={{ borderLeftColor: accentFor(toast.entry.kind) }}
+              className={`flex items-center gap-1.5 rounded-2xl bg-black/80 py-1.5 pl-1.5 pr-3
+                backdrop-blur-sm ${toast.leaving ? "toast-leaving" : "animate-toast-in"}`}
             >
-              <InitialsAvatar name={toast.entry.name ?? "Room"} size={24} />
-              <p className="min-w-0 flex-1 truncate text-sm leading-tight">
-                {toast.entry.name ? <strong className="font-bold">{toast.entry.name}: </strong> : null}
+              {toast.entry.name ? <InitialsAvatar name={toast.entry.name} size={20} /> : null}
+              <p className={`min-w-0 truncate text-sm leading-tight ${toneFor(toast.entry.kind)}`}>
+                {toast.entry.name && toast.entry.kind !== "correct" ? (
+                  <strong className="font-bold text-white">{toast.entry.name}: </strong>
+                ) : null}
                 {toast.entry.text}
               </p>
-              {labelFor(toast.entry) ? (
-                <span
-                  className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-                  style={{ background: accentFor(toast.entry.kind) }}
-                >
-                  {labelFor(toast.entry)}
-                </span>
-              ) : null}
             </div>
           </div>
         </li>

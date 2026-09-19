@@ -2,11 +2,19 @@
 
 import { useEffect, useState } from "react";
 
-export function Timer({ endsAt, serverTime, totalSeconds }: {
-  endsAt: string | null;
-  serverTime: string;
-  totalSeconds: number;
-}) {
+export interface Countdown {
+  /** Whole seconds left, or null when nothing is running. */
+  seconds: number | null;
+  /** 1 at the start of the phase down to 0, or null when nothing is running. */
+  progress: number | null;
+}
+
+/**
+ * One ticking clock for every readout. The device clock is not trusted: the
+ * remaining time is measured against the server's own timestamp, so a phone
+ * that is minutes out still counts down correctly.
+ */
+export function useCountdown(endsAt: string | null, serverTime: string, totalSeconds: number): Countdown {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -14,12 +22,24 @@ export function Timer({ endsAt, serverTime, totalSeconds }: {
     return () => clearInterval(interval);
   }, []);
 
-  if (!endsAt) return null;
-  // Trust the server's clock, not the device's.
+  if (!endsAt) return { seconds: null, progress: null };
   const skew = Date.parse(serverTime) - now;
   const remainingMs = Math.max(0, Date.parse(endsAt) - (now + skew));
-  const seconds = Math.ceil(remainingMs / 1000);
-  const ratio = Math.max(0, Math.min(1, remainingMs / (totalSeconds * 1000)));
+  return {
+    seconds: Math.ceil(remainingMs / 1000),
+    progress: Math.max(0, Math.min(1, remainingMs / (totalSeconds * 1000))),
+  };
+}
+
+export function Timer({ endsAt, serverTime, totalSeconds }: {
+  endsAt: string | null;
+  serverTime: string;
+  totalSeconds: number;
+}) {
+  const { seconds, progress } = useCountdown(endsAt, serverTime, totalSeconds);
+
+  if (seconds === null || progress === null) return null;
+  const ratio = progress;
   const urgent = seconds <= 10;
 
   return (

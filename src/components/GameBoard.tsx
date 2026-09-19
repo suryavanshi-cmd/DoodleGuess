@@ -5,11 +5,12 @@ import { Canvas } from "./Canvas";
 import { ClueBoard } from "./ClueBoard";
 import { Confetti } from "./Confetti";
 import { Feed, FeedList, FeedTabs, GuessInput, type FeedTab } from "./Feed";
-import { PlayerList, PlayerStrip } from "./PlayerList";
+import { GameHud } from "./GameHud";
+import { PlayerColumn, PlayerList } from "./PlayerList";
 import { PresenceBar } from "./PresenceBar";
-import { ReactionBar, ReactionOverlay } from "./Reactions";
+import { ReactionBar, ReactionOverlay, VoteButtons } from "./Reactions";
 import { Replay } from "./Replay";
-import { Timer } from "./Timer";
+import { useCountdown } from "./Timer";
 import { ToastFeed } from "./ToastFeed";
 import { WordPicker } from "./WordPicker";
 import { ThemeToggle } from "./ThemeToggle";
@@ -42,6 +43,12 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
 
   const round = state?.round ?? null;
   const approval = state?.hostApproval ?? null;
+  // Only the drawing phase has a public deadline; everything else shows a dash.
+  const countdown = useCountdown(
+    state?.status === "drawing" ? round?.endsAt ?? null : null,
+    state?.serverTime ?? "",
+    state?.settings.turnSeconds ?? 60,
+  );
   const textMode = state?.settings.gameMode === "text_clue";
   const iGuessedIt = Boolean(me?.guessedCorrect);
   const canGuess = Boolean(state?.status === "drawing" && !isDrawer && !iGuessedIt && !frozen);
@@ -86,86 +93,69 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
     }
   };
 
+  const hudLabel = state.status === "picking"
+    ? (isDrawer ? "PICK A WORD" : "GET READY")
+    : round?.status === "ended" || state.status === "intermission"
+      ? "THE WORD WAS"
+      : isDrawer
+        ? (textMode ? "CLUE THIS" : "DRAW THIS")
+        : "GUESS THIS";
+
+  /** Sits inside the board box, so it tracks the drawing and not the toolbar. */
+  const boardOverlay = (
+    <>
+      {state.status === "drawing" && !isDrawer ? (
+        <VoteButtons onReact={(emoji) => void actions.react(emoji)} />
+      ) : null}
+      <ToastFeed entries={feed} />
+    </>
+  );
+
   const placeholder = tab === "chat"
     ? "Say something nice…"
     : canGuess ? "Type your guess…" : "Guessing is paused";
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-7xl flex-col gap-1.5 overflow-hidden px-1.5 py-1.5 sm:gap-2 sm:px-3 sm:py-2 lg:gap-3 lg:px-4 lg:py-3">
-      <header className="card flex items-center gap-1.5 px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
-        <span className="chip shrink-0 px-2 text-xs sm:text-sm">
-          {state.roundNumber}/{state.totalRounds}
-        </span>
-        {round?.doublePoints ? (
-          <span className="chip hidden shrink-0 bg-warning/20 text-warning sm:inline-flex">⚡ Double</span>
-        ) : null}
-
-        <div className="min-w-0 flex-1 text-center">
-          <p className="truncate font-display text-2xl tracking-[0.18em] sm:text-3xl" aria-label="The word">
-            {wordDisplay || (state.status === "picking" ? "· · ·" : "")}
-          </p>
-          <p className="truncate text-[11px] text-muted sm:text-xs">
-            {state.status === "picking"
-              ? `${state.players.find((p) => p.id === round?.drawerId)?.name ?? "Someone"} is choosing…`
-              : round?.status === "ended"
-                ? "That was the word"
-                : isDrawer
-                  ? (textMode ? "Write a clue for this!" : "Draw this!")
-                  : round?.shape.length ? `${round.shape.join(" + ")} letters` : ""}
-          </p>
-        </div>
-
-        <Timer
-          endsAt={state.status === "drawing" ? round?.endsAt ?? null : null}
-          serverTime={state.serverTime}
-          totalSeconds={state.settings.turnSeconds}
-        />
-
-        <button
-          type="button"
-          className="btn-ghost shrink-0 px-2.5 lg:hidden"
-          onClick={() => setSheetOpen(true)}
-          aria-label="Open chat and guess history"
-        >
-          💬
-        </button>
-        <span className="hidden shrink-0 gap-2 sm:flex">
-          <button
-            type="button" className="btn-ghost px-2.5" aria-label={muted ? "Unmute sounds" : "Mute sounds"}
-            onClick={() => setMuted(!muted)}
-          >
-            {muted ? "🔇" : "🔊"}
-          </button>
-          <ThemeToggle />
-          <button type="button" className="btn-ghost px-3" onClick={onLeave}>Leave</button>
-        </span>
-      </header>
+    <div className="mx-auto flex h-dvh w-full max-w-7xl flex-col overflow-hidden sm:gap-2 sm:px-3 sm:py-2 lg:gap-3 lg:px-4 lg:py-3">
+      <GameHud
+        seconds={countdown.seconds}
+        progress={countdown.progress}
+        roundNumber={state.roundNumber}
+        totalRounds={state.totalRounds}
+        label={hudLabel}
+        word={wordDisplay || (state.status === "picking" ? "· · ·" : "")}
+        length={round && round.status !== "ended" && round.shape.length
+          ? round.shape.reduce((total, part) => total + part, 0)
+          : null}
+        onSettings={() => setSheetOpen(true)}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2 lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-3">
         <div className="flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2">
           <div className="relative flex shrink-0 flex-col justify-center lg:min-h-0 lg:flex-1">
             {textMode && round ? (
-              <ClueBoard
-                round={round}
-                isGiver={isDrawer}
-                secretWord={state.yourWord ?? null}
-                onSubmit={(value) => actions.submitClue(round.id, value)}
-                onSuggest={() => actions.clueSuggestions(round.id)}
-              />
+              <div className="relative">
+                <ClueBoard
+                  round={round}
+                  isGiver={isDrawer}
+                  secretWord={state.yourWord ?? null}
+                  onSubmit={(value) => actions.submitClue(round.id, value)}
+                  onSuggest={() => actions.clueSuggestions(round.id)}
+                />
+                {boardOverlay}
+              </div>
             ) : (
               <Canvas
                 strokes={strokes}
                 canDraw={isDrawer && state.status === "drawing"}
                 onStroke={room.pushStroke}
                 onCanvas={room.pushCanvas}
+                overlay={boardOverlay}
               />
             )}
 
             <ReactionOverlay reactions={reactions} />
             <Confetti trigger={celebrations} />
-            {/* Live ticker down the right of the stage. Click-through, so it
-                never intercepts a stroke; the full record is in the history. */}
-            <ToastFeed entries={feed} />
 
             {isDrawer && state.status === "picking" && state.yourChoices && round ? (
               <WordPicker
@@ -228,11 +218,19 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
             ) : null}
           </div>
 
-          <div className="card min-h-0 flex-1 overflow-hidden lg:hidden">
-            <FeedList entries={feed} tab={tab} />
+          {/* Phone: scoreboard and chat side by side under the board, the way
+              every game of this shape reads — who is winning on the left, what
+              everyone is shouting on the right. */}
+          <div className="flex min-h-0 flex-1 border-y-2 border-brand lg:hidden">
+            <div className="flex min-h-0 w-[47%] shrink-0 flex-col border-r-2 border-brand">
+              <PlayerColumn players={state.players} meId={me?.id ?? null} drawerId={round?.drawerId ?? null} />
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <FeedList entries={feed} tab={tab} />
+            </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="hidden shrink-0 items-center gap-2 lg:flex">
             <ReactionBar onReact={(emoji) => void actions.react(emoji)} />
             {state.settings.powerUpsEnabled && !isDrawer ? (
               <button
@@ -284,10 +282,28 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
         </aside>
       </div>
 
-      {/* Phone: roster rail and the guess box stay put at the bottom. */}
-      <div className="flex shrink-0 flex-col gap-1.5 lg:hidden">
-        <PlayerStrip players={state.players} meId={me?.id ?? null} drawerId={round?.drawerId ?? null} />
+      {/* Phone: the guess box is pinned to the bottom edge. */}
+      <div className="flex shrink-0 items-end gap-1.5 px-1.5 pb-1.5 pt-1 lg:hidden">
+        {state.settings.powerUpsEnabled && !isDrawer ? (
+          <button
+            type="button"
+            className="btn-ghost h-11 shrink-0 px-2.5 text-sm"
+            disabled={!canBuyHint}
+            onClick={async () => {
+              const result = await actions.powerUp("hint");
+              if (result?.hint) {
+                setHint(`🔍 ${result.hint}`);
+                setTimeout(() => setHint(null), 12_000);
+              }
+            }}
+            title={`Reveal one letter for ${POWER_UP_COSTS.hint} points`}
+            aria-label={`Buy a letter hint for ${POWER_UP_COSTS.hint} points`}
+          >
+            🔍<span className="font-pixel ml-0.5 text-[8px]">{POWER_UP_COSTS.hint}</span>
+          </button>
+        ) : null}
         <GuessInput
+          className="min-w-0 flex-1"
           tab={tab}
           onSend={send}
           disabled={tab === "guesses" ? !canGuess : false}
@@ -304,6 +320,9 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
           >
             <div className="border-b border-line px-2.5 py-2">
               <PresenceBar players={state.players} meId={me?.id ?? null} />
+            </div>
+            <div className="border-b border-line px-2.5 py-2">
+              <ReactionBar onReact={(emoji) => void actions.react(emoji)} />
             </div>
             <div className="flex items-center gap-2 pr-2">
               <div className="min-w-0 flex-1"><FeedTabs tab={tab} onTab={setTab} /></div>

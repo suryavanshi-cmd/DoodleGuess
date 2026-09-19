@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { BRUSH_SIZES, CANVAS_H, CANVAS_W, PALETTE, canvasBackground, renderAll, renderStroke } from "@/lib/draw";
 import type { ShapeKind, Stroke, StrokePoint } from "@/lib/game/types";
 
@@ -19,11 +19,13 @@ const BASIC_COLORS = [PALETTE[0], "#ef4444", "#3b82f6"];
 /** Undo/redo depth, matching the spec's "last 20 strokes". */
 const HISTORY_LIMIT = 20;
 
-export function Canvas({ strokes, canDraw, onStroke, onCanvas }: {
+export function Canvas({ strokes, canDraw, onStroke, onCanvas, overlay }: {
   strokes: Stroke[];
   canDraw: boolean;
   onStroke: (stroke: Stroke, all: Stroke[]) => void;
   onCanvas: (action: "clear" | "undo" | "redo", all: Stroke[]) => void;
+  /** Rendered inside the canvas box, so it tracks the drawing, not the tools. */
+  overlay?: ReactNode;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef<Stroke | null>(null);
@@ -116,7 +118,7 @@ export function Canvas({ strokes, canDraw, onStroke, onCanvas }: {
 
   return (
     <div className="space-y-2">
-      <div className="overflow-hidden rounded-2xl border border-line shadow-sm" style={{ background: canvasBackground() }}>
+      <div className="relative overflow-hidden rounded-2xl border border-line shadow-sm" style={{ background: canvasBackground() }}>
         <canvas
           ref={canvasRef}
           width={CANVAS_W}
@@ -130,6 +132,7 @@ export function Canvas({ strokes, canDraw, onStroke, onCanvas }: {
           onPointerLeave={handleUp}
           aria-label={canDraw ? "Drawing canvas" : "The drawing appears here"}
         />
+        {overlay}
       </div>
 
       {canDraw ? (

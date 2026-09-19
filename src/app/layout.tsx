@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Orbitron, Rajdhani } from "next/font/google";
+import { Orbitron, Press_Start_2P, Rajdhani } from "next/font/google";
 import "./globals.css";
 
 /**
@@ -10,6 +10,8 @@ import "./globals.css";
  */
 const display = Orbitron({ weight: ["600", "800"], subsets: ["latin"], variable: "--font-display" });
 const ui = Rajdhani({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-ui" });
+/** Arcade type for the HUD chrome only — timer, round count, the word rail. */
+const pixel = Press_Start_2P({ weight: "400", subsets: ["latin"], variable: "--font-pixel" });
 
 export const metadata: Metadata = {
   title: "DoodleGuess — draw, guess, laugh",
@@ -39,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className={`${ui.variable} ${display.variable} font-sans antialiased`}>{children}</body>
+      <body className={`${ui.variable} ${display.variable} ${pixel.variable} font-sans antialiased`}>{children}</body>
     </html>
   );
 }

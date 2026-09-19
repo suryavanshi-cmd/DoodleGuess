@@ -7,14 +7,19 @@ export type FeedTab = "guesses" | "chat";
 
 const GUESS_KINDS = new Set(["guess", "correct", "close", "synonym", "system", "join", "leave"]);
 
+/**
+ * Full-bleed coloured rows, so the outcome of a guess reads from the colour
+ * before the words are parsed: green landed it, amber was close, grey is the
+ * room talking to itself.
+ */
 function entryClass(entry: FeedEntry): string {
   switch (entry.kind) {
-    case "correct": return "bg-success/15 text-success font-semibold";
+    case "correct": return "bg-success/20 text-success font-bold";
     case "close": return "bg-warning/15 text-warning font-semibold";
     // "Very close" — a listed synonym. Softer than a win, warmer than a miss.
-    case "synonym": return "bg-accent/15 text-warning font-semibold ring-1 ring-warning/30";
-    case "system": return "text-muted italic";
-    case "join": case "leave": return "text-muted";
+    case "synonym": return "bg-warning/20 text-warning font-bold";
+    case "system": return "bg-surface-2/60 text-muted";
+    case "join": case "leave": return "bg-surface-2/60 text-muted";
     default: return "";
   }
 }
@@ -51,14 +56,14 @@ export function FeedList({ entries, tab }: { entries: FeedEntry[]; tab: FeedTab 
   }, [visible.length, tab]);
 
   return (
-    <div ref={listRef} className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2 text-xs sm:space-y-1 sm:p-2.5 sm:text-sm" aria-live="polite">
+    <div ref={listRef} className="min-h-0 flex-1 divide-y divide-line overflow-y-auto text-xs sm:text-sm" aria-live="polite">
       {visible.length === 0 ? (
         <p className="p-2 text-muted">
           {tab === "chat" ? "Banter goes here — it stays out of the guess feed." : "Guesses will show up here."}
         </p>
       ) : null}
       {visible.map((entry) => (
-        <p key={entry.id} className={`rounded-md px-1.5 py-0.5 sm:rounded-lg sm:px-2 sm:py-1 ${entryClass(entry)}`}>
+        <p key={entry.id} className={`px-2 py-1 leading-snug ${entryClass(entry)}`}>
           {entry.name && (entry.kind === "chat" || entry.kind === "guess") ? <strong>{entry.name}: </strong> : null}
           {entry.text}
         </p>

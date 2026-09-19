@@ -22,6 +22,31 @@ export function ReactionBar({ onReact }: { onReact: (emoji: string) => void }) {
   );
 }
 
+/**
+ * Thumbs sit on the drawing itself: a verdict on someone's art is worth one
+ * tap, and burying it in a reaction bar means nobody ever sends it.
+ */
+export function VoteButtons({ onReact, className = "" }: {
+  onReact: (emoji: string) => void;
+  className?: string;
+}) {
+  return (
+    <div className={`absolute right-1.5 top-1.5 z-20 flex gap-1 ${className}`}>
+      {["👍", "👎"].map((emoji) => (
+        <button
+          key={emoji}
+          type="button"
+          onClick={() => onReact(emoji)}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-2xl drop-shadow transition active:scale-90 sm:h-11 sm:w-11"
+          aria-label={emoji === "👍" ? "Nice drawing" : "Not quite"}
+        >
+          {emoji}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** Reactions float over the canvas instead of filling the guess feed. */
 export function ReactionOverlay({ reactions }: { reactions: FloatingReaction[] }) {
   return (
