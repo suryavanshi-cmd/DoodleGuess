@@ -29,7 +29,7 @@ export function PlayerColumn({ players, meId, drawerId }: {
             ${player.guessedCorrect ? "bg-success/15" : player.id === meId ? "bg-brand/15" : ""}
             ${player.connected ? "" : "opacity-50"}`}
         >
-          <span className="font-pixel w-7 shrink-0 text-[8px] text-muted">#{rankOf.get(player.id)}</span>
+          <span className="font-hud w-7 shrink-0 text-[11px] text-muted">#{rankOf.get(player.id)}</span>
           <span className="min-w-0 flex-1 text-center leading-tight">
             <span className="block truncate text-xs font-bold">
               {player.id === meId ? `${player.name} (You)` : player.name}

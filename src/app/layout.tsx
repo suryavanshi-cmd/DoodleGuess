@@ -1,17 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Orbitron, Press_Start_2P, Rajdhani } from "next/font/google";
+import { Chakra_Petch, Orbitron, Share_Tech_Mono } from "next/font/google";
 import "./globals.css";
 
 /**
- * Sci-fi HUD pairing. Perfect Dark, Ghost Clan, Neuropolitical and Good Times
- * are all licensed faces we cannot ship, so this is the closest free match:
- * Orbitron for the wide geometric display type (the Good Times look) and
- * Rajdhani for squarish, narrow HUD text that stays legible when compact.
+ * Three machined faces, all squared-off, each doing one job.
+ *
+ * Perfect Dark, Ghost Clan, Neuropolitical and Good Times are licensed faces
+ * we cannot ship, so these are the closest free matches:
+ *
+ * - Orbitron: wide geometric display type, the Good Times look, for headings.
+ * - Chakra Petch: squared terminals and flat curves — mechanical up close, and
+ *   unlike a condensed face it holds its shape in a fast-moving guess feed.
+ * - Share Tech Mono: fixed-width HUD readout for the clock, the word rail, room
+ *   codes and ranks. Digits line up and never reflow as they count down.
  */
 const display = Orbitron({ weight: ["600", "800"], subsets: ["latin"], variable: "--font-display" });
-const ui = Rajdhani({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-ui" });
-/** Arcade type for the HUD chrome only — timer, round count, the word rail. */
-const pixel = Press_Start_2P({ weight: "400", subsets: ["latin"], variable: "--font-pixel" });
+const ui = Chakra_Petch({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-ui" });
+const hud = Share_Tech_Mono({ weight: "400", subsets: ["latin"], variable: "--font-hud" });
 
 export const metadata: Metadata = {
   title: "DoodleGuess — draw, guess, laugh",
@@ -42,7 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className={`${ui.variable} ${display.variable} ${pixel.variable} font-sans antialiased`}>{children}</body>
+      <body className={`${ui.variable} ${display.variable} ${hud.variable} font-sans antialiased`}>{children}</body>
     </html>
   );
 }

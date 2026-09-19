@@ -62,7 +62,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
-  --font-sans: var(--font-ui), "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-ui), "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display), "Orbitron", ui-sans-serif, system-ui, sans-serif;
 }
 
@@ -103,9 +103,11 @@ html, body {
   color: var(--fg);
 }
 
-@utility font-pixel {
-  font-family: var(--font-pixel), ui-monospace, monospace;
-  letter-spacing: 0;
+/* Fixed-width HUD readout: the clock, the word rail, room codes, ranks. Mono by
+   nature, so a counter never nudges the layout as its digits change. */
+@utility font-hud {
+  font-family: var(--font-hud), ui-monospace, "SFMono-Regular", monospace;
+  letter-spacing: 0.02em;
 }
 
 @utility font-display {

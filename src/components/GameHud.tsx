@@ -35,19 +35,19 @@ export function GameHud({
     <header className="flex shrink-0 items-center gap-2 border-b border-line bg-surface px-2 py-1.5 sm:px-3">
       <div className="flex w-16 shrink-0 flex-col items-center gap-0.5 sm:w-20">
         <Clock seconds={seconds} progress={progress} urgent={urgent} />
-        <span className="font-pixel text-[7px] leading-none text-muted sm:text-[8px]">
+        <span className="font-hud text-[11px] leading-none text-muted sm:text-xs">
           {roundNumber}/{totalRounds}
         </span>
       </div>
 
       <div className="min-w-0 flex-1 text-center">
-        <p className="font-pixel text-[8px] uppercase leading-none text-muted sm:text-[10px]">{label}</p>
-        <p className="mt-1.5 truncate font-pixel text-[15px] leading-none sm:text-xl" aria-label="The word">
+        <p className="font-hud text-[11px] uppercase leading-none tracking-widest text-muted sm:text-xs">{label}</p>
+        <p className="mt-1 truncate font-hud text-xl leading-none tracking-[0.18em] sm:text-3xl" aria-label="The word">
           {word}
           {length !== null ? (
             // A real <sup> flies to the top of a tall pixel line box; nudging a
             // plain span keeps the count beside the word where it reads.
-            <span className="ml-1 inline-block -translate-y-1.5 align-baseline text-[9px] text-muted sm:text-xs">
+            <span className="ml-0.5 inline-block -translate-y-2 align-baseline text-[11px] text-muted sm:text-sm">
               {length}
             </span>
           ) : null}
@@ -91,7 +91,7 @@ function Clock({ seconds, progress, urgent }: {
           />
         )}
       </svg>
-      <span className={`font-pixel text-[11px] leading-none sm:text-xs ${urgent ? "text-danger" : ""}`}>
+      <span className={`font-hud text-sm leading-none sm:text-base ${urgent ? "text-danger" : ""}`}>
         {seconds ?? "–"}
       </span>
     </span>

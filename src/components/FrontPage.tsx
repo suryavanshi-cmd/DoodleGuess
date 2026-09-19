@@ -100,7 +100,7 @@ export function FrontPage() {
         {/* ---------------------------------------------------------- hero */}
         <section className="grid items-center gap-8 py-12 sm:py-16 lg:grid-cols-[1.05fr_1fr] lg:gap-12 lg:py-24">
           <div>
-            <p className="font-pixel text-[9px] uppercase tracking-widest text-muted sm:text-[10px]">
+            <p className="font-hud text-[11px] uppercase tracking-widest text-muted sm:text-xs">
               Multiplayer · Free · No sign-up
             </p>
             <h1 className="mt-4 text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
@@ -121,7 +121,7 @@ export function FrontPage() {
 
             {rooms.length > 0 ? (
               <div className="mt-8 sm:mt-10">
-                <p className="font-pixel text-[9px] uppercase tracking-widest text-muted">
+                <p className="font-hud text-[11px] uppercase tracking-widest text-muted">
                   Rooms open right now
                 </p>
                 <ul className="mt-2.5 flex flex-wrap gap-2">
@@ -131,7 +131,7 @@ export function FrontPage() {
                         href={`/room/${room.code}`}
                         className="lift inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm"
                       >
-                        <span className="font-pixel text-[10px]">{room.code}</span>
+                        <span className="font-hud text-sm">{room.code}</span>
                         <span className="text-muted">
                           {room.players} {room.players === 1 ? "player" : "players"}
                         </span>
@@ -180,7 +180,7 @@ export function FrontPage() {
             {STEPS.map((step, index) => (
               <Reveal key={step.n} delay={index * 70}>
                 <li className="h-full rounded-xl border border-line bg-surface p-5">
-                  <span className="font-pixel text-xs text-muted">{step.n}</span>
+                  <span className="font-hud text-sm text-muted">{step.n}</span>
                   <h3 className="mt-3 text-lg font-bold">{step.title}</h3>
                   <p className="mt-1.5 text-sm text-muted">{step.body}</p>
                 </li>
@@ -293,7 +293,7 @@ function HeroDoodle() {
           />
         ))}
       </svg>
-      <p className="mt-3 text-center font-pixel text-[9px] uppercase tracking-widest text-muted">
+      <p className="mt-3 text-center font-hud text-[11px] uppercase tracking-widest text-muted">
         someone drew this in 40 seconds
       </p>
     </div>

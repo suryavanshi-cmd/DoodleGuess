@@ -299,7 +299,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
             title={`Reveal one letter for ${POWER_UP_COSTS.hint} points`}
             aria-label={`Buy a letter hint for ${POWER_UP_COSTS.hint} points`}
           >
-            🔍<span className="font-pixel ml-0.5 text-[8px]">{POWER_UP_COSTS.hint}</span>
+            🔍<span className="font-hud ml-0.5 text-[11px]">{POWER_UP_COSTS.hint}</span>
           </button>
         ) : null}
         <GuessInput
