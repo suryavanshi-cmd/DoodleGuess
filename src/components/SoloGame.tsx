@@ -24,8 +24,10 @@ import type { Stroke } from "@/lib/game/types";
 
 const ROUNDS = 6;
 const SECONDS = 20;
-/** A breath to read the verdict before the next word. */
-const VERDICT_MS = 1_600;
+/** Long enough to read what the AI said and enjoy it. */
+const WIN_MS = 2_600;
+/** Shorter: there is nothing to celebrate, and the next word is the point. */
+const LOSS_MS = 1_800;
 
 type Phase = "loading" | "ready" | "drawing" | "won" | "lost" | "over";
 
@@ -42,6 +44,16 @@ function pickWords(model: DoodleModel): string[] {
 interface Round {
   word: string;
   won: boolean;
+  /** The label the model actually said, which is not always the word. */
+  said?: string;
+  seconds?: number;
+}
+
+/** What the AI said at the moment it got it, kept for the win screen. */
+interface Verdict {
+  said: string;
+  score: number;
+  seconds: number;
 }
 
 export function SoloGame() {
@@ -52,6 +64,7 @@ export function SoloGame() {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [left, setLeft] = useState(SECONDS);
   const [celebrations, setCelebrations] = useState(0);
+  const [verdict, setVerdict] = useState<Verdict | null>(null);
 
   const word = words[index] ?? "";
   const phaseRef = useRef(phase);
@@ -96,11 +109,15 @@ export function SoloGame() {
     if (phaseRef.current !== "drawing") return;
     const target = words[index];
     // Any of the three it offers counts, matching what the bubble says.
-    if (!target || !guesses.some((guess) => labelMatches(guess.label, target))) return;
+    const hit = target ? guesses.find((guess) => labelMatches(guess.label, target)) : undefined;
+    if (!hit) return;
     phaseRef.current = "won";
+    // Kept rather than recomputed: by the time this renders the sampler has
+    // moved on, and the words it won with are the whole moment.
+    setVerdict({ said: hit.label, score: hit.score, seconds: Math.max(1, SECONDS - left) });
     setPhase("won");
     setCelebrations((count) => count + 1);
-  }, [words, index]);
+  }, [words, index, left]);
 
   const { guesses, thinking, available } = useAiGuesses(strokes, phase === "drawing", { onGuess, target: word });
 
@@ -109,23 +126,28 @@ export function SoloGame() {
     if (phase !== "won" && phase !== "lost") return;
     const won = phase === "won";
     const timer = setTimeout(() => {
-      setResults((current) => [...current, { word: words[index], won }]);
+      setResults((current) => [
+        ...current,
+        { word: words[index], won, said: verdict?.said, seconds: verdict?.seconds },
+      ]);
       setStrokes([]);
       setLeft(SECONDS);
+      setVerdict(null);
       if (index + 1 >= ROUNDS) setPhase("over");
       else {
         setIndex((current) => current + 1);
         setPhase("ready");
       }
-    }, VERDICT_MS);
+    }, won ? WIN_MS : LOSS_MS);
     return () => clearTimeout(timer);
-  }, [phase, index, words]);
+  }, [phase, index, words, verdict]);
 
   const restart = () => {
     setResults([]);
     setIndex(0);
     setStrokes([]);
     setLeft(SECONDS);
+    setVerdict(null);
     setPhase("loading");
     void loadDoodleModel().then((model) => {
       if (!model) return;
@@ -195,16 +217,13 @@ export function SoloGame() {
             overlay={
               <>
                 <AiGuessOverlay guesses={guesses} thinking={thinking} target={word} />
+                {phase === "won" ? <WinCard verdict={verdict} /> : null}
+                {phase === "lost" ? <LossCard word={word} /> : null}
                 <Confetti trigger={celebrations} />
               </>
             }
           />
 
-          {phase === "lost" ? (
-            <p className="animate-pop-in text-center text-lg font-bold text-warning">
-              Time! It never got {word}.
-            </p>
-          ) : null}
         </>
       ) : null}
 
@@ -213,13 +232,22 @@ export function SoloGame() {
           <p className="text-lg text-muted">The classifier recognised</p>
           <p className="text-5xl font-black">{wins} of {results.length}</p>
           <ul className="mt-2 flex flex-wrap justify-center gap-2">
-            {results.map((round) => (
+            {results.map((round, position) => (
               <li
-                key={round.word}
+                // Position, not the word: a word can repeat across a run, and
+                // two chips sharing a key reconcile into each other.
+                key={`${position}-${round.word}`}
                 className={`rounded-lg border px-3 py-1.5 text-sm font-semibold
                   ${round.won ? "border-success/50 bg-success/15 text-success" : "border-line bg-surface text-muted"}`}
               >
                 {round.won ? "✓" : "✕"} {round.word}
+                {/* The dataset's name for it, when that is not the word. */}
+                {round.won && round.said && normalize(round.said) !== normalize(round.word)
+                  ? <span className="font-normal opacity-80"> — &ldquo;{round.said}&rdquo;</span>
+                  : null}
+                {round.won && round.seconds
+                  ? <span className="font-hud ml-1.5 text-xs opacity-70">{round.seconds}s</span>
+                  : null}
               </li>
             ))}
           </ul>
@@ -232,5 +260,55 @@ export function SoloGame() {
 
       <DoodleModelCredit className="shrink-0 text-center" />
     </main>
+  );
+}
+
+/* --------------------------------------------------------------- verdicts */
+
+const normalize = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
+
+/**
+ * The winning moment.
+ *
+ * The point of solo is the second the machine recognises your scribble, so
+ * that second gets the screen: its own words, in its own voice, and how long
+ * it took. Confetti alone said something happened without saying what.
+ */
+function WinCard({ verdict }: { verdict: Verdict | null }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center p-4">
+      <div className="animate-pop-in w-full max-w-sm rounded-2xl border border-success/50 bg-surface/95 p-5 text-center shadow-2xl backdrop-blur-md">
+        <p className="font-hud text-[11px] uppercase tracking-[0.3em] text-success">Got it</p>
+        {verdict ? (
+          <>
+            <p className="font-hero mt-2 text-xl font-semibold leading-snug text-fg">
+              &ldquo;Oh I know, it&rsquo;s {verdict.said}!&rdquo;
+            </p>
+            <p className="mt-2 text-sm text-muted">
+              in {verdict.seconds} {verdict.seconds === 1 ? "second" : "seconds"}
+              <span aria-hidden> · </span>
+              {Math.round(verdict.score * 100)}% sure
+            </p>
+          </>
+        ) : (
+          <p className="font-hero mt-2 text-xl font-semibold text-fg">The AI got it.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** The other outcome, in the same place, so a round always ends somewhere. */
+function LossCard({ word }: { word: string }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center p-4">
+      <div className="animate-pop-in w-full max-w-sm rounded-2xl border border-line bg-surface/95 p-5 text-center shadow-2xl backdrop-blur-md">
+        <p className="font-hud text-[11px] uppercase tracking-[0.3em] text-warning">Time</p>
+        <p className="font-hero mt-2 text-xl font-semibold leading-snug text-fg">
+          It never saw {word}.
+        </p>
+        <p className="mt-2 text-sm text-muted">Next one.</p>
+      </div>
+    </div>
   );
 }

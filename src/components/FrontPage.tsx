@@ -112,24 +112,39 @@ export function FrontPage() {
             A drawing and guessing game for up to sixteen friends. One tap and the room is open.
           </p>
 
-          <div className="animate-rise mt-11 sm:mt-14" style={{ animationDelay: "280ms" }}>
+          {/* The two ways to play, side by side and the same size, because they
+              are genuinely two choices — not one button and a footnote. Only
+              one of them is filled, so there is still a front door. */}
+          <div
+            className="animate-rise mt-11 flex w-full max-w-md flex-col items-stretch gap-3
+                       sm:mt-14 sm:w-auto sm:max-w-none sm:flex-row sm:items-center"
+            style={{ animationDelay: "280ms" }}
+          >
             <button
               type="button"
               onClick={() => setPicking(true)}
-              className="play-cta font-hero inline-flex h-16 min-w-[200px] items-center justify-center rounded-full
-                         px-12 text-lg font-semibold tracking-[-0.01em] sm:h-[4.5rem] sm:min-w-[240px] sm:text-xl"
+              className="play-cta font-hero inline-flex h-16 items-center justify-center rounded-full px-10
+                         text-lg font-semibold tracking-[-0.01em] sm:h-[4.5rem] sm:w-[300px] sm:px-6 sm:text-xl"
               aria-haspopup="dialog"
               aria-expanded={picking}
             >
-              Play
+              Play with friends
             </button>
+
+            <Link
+              href="/solo"
+              className="play-alt font-hero inline-flex h-16 items-center justify-center gap-2.5 rounded-full px-8
+                         text-lg font-semibold tracking-[-0.01em] sm:h-[4.5rem] sm:w-[300px] sm:px-6 sm:text-xl"
+            >
+              <HighlightIcon kind="spark" className="size-5 shrink-0 text-accent-vivid sm:size-[22px]" />
+              Play solo vs the AI
+            </Link>
           </div>
 
           <div
-            className="animate-rise font-hero mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted"
+            className="animate-rise font-hero mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted"
             style={{ animationDelay: "360ms" }}
           >
-            <Link href="/solo" className="transition hover:text-fg">Play solo vs the AI</Link>
             <Link href="/play" className="transition hover:text-fg">Join with a code</Link>
           </div>
 
@@ -200,9 +215,9 @@ const ICONS: Record<Icon, string[]> = {
   tag: ["M4 12 12 4h8v8l-8 8z", "M16 8h.01"],
 };
 
-function HighlightIcon({ kind }: { kind: Icon }) {
+function HighlightIcon({ kind, className = "size-6 text-fg" }: { kind: Icon; className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className="size-6 text-fg" fill="none" aria-hidden>
+    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden>
       {ICONS[kind].map((d) => (
         <path key={d} d={d} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       ))}

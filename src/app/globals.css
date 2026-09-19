@@ -305,6 +305,27 @@ html, body {
   outline-offset: 4px;
 }
 
+/* The second way in, beside the Play button. Same size and shape so the two
+   read as a pair of choices rather than a button and an afterthought; hairline
+   and unfilled so there is still no question which one is the front door. */
+.play-alt {
+  position: relative;
+  border: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  color: var(--fg);
+  transition: transform 0.28s var(--ease-snap), border-color 0.28s ease-out,
+              background-color 0.28s ease-out;
+}
+@media (hover: hover) {
+  .play-alt:hover {
+    transform: translate3d(0, -2px, 0) scale(1.015);
+    border-color: color-mix(in srgb, var(--accent-vivid) 55%, transparent);
+    background: color-mix(in srgb, var(--surface) 85%, transparent);
+  }
+}
+.play-alt:active { transform: translate3d(0, 0, 0) scale(0.975); }
+.play-alt:focus-visible { outline: 2px solid var(--accent-vivid); outline-offset: 4px; }
+
 /* Hairline-framed panel: a rule so faint it separates without drawing a box,
    over a surface barely lifted off the page. The restraint is the point. */
 .pane {
@@ -324,6 +345,7 @@ html, body {
   .animate-rise { animation: none; opacity: 1; transform: none; }
   .play-cta::after { animation: none; opacity: 0.5; }
   .play-cta, .play-cta:hover, .play-cta:active { transform: none; transition: none; }
+  .play-alt, .play-alt:hover, .play-alt:active { transform: none; transition: none; }
   .pane { transition: none; }
 }
 
