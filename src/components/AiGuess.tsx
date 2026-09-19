@@ -29,16 +29,23 @@ export interface AiGuessState {
   thinking: boolean;
 }
 
-export function useAiGuesses(strokes: readonly Stroke[], enabled: boolean): AiGuessState {
+export function useAiGuesses(
+  strokes: readonly Stroke[],
+  enabled: boolean,
+  /** Fired on every sample, so a caller can act without watching state. */
+  onGuess?: (guesses: Prediction[]) => void,
+): AiGuessState {
   const [guesses, setGuesses] = useState<Prediction[]>([]);
   const [available, setAvailable] = useState(true);
   const [thinking, setThinking] = useState(false);
   // The sampler reads the latest strokes without restarting on every stroke,
   // so the interval is not torn down and rebuilt mid-drawing.
   const strokesRef = useRef<readonly Stroke[]>(strokes);
+  const onGuessRef = useRef(onGuess);
   useEffect(() => {
     strokesRef.current = strokes;
-  }, [strokes]);
+    onGuessRef.current = onGuess;
+  }, [strokes, onGuess]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -73,6 +80,7 @@ export function useAiGuesses(strokes: readonly Stroke[], enabled: boolean): AiGu
         }
 
         setGuesses(next);
+        onGuessRef.current?.(next);
         timer = setTimeout(tick, SAMPLE_MS);
       };
 

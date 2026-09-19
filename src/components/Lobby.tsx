@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { AvatarBadge } from "./AvatarPicker";
 import { SettingsForm } from "./SettingsForm";
@@ -113,6 +114,14 @@ export function Lobby({ room, onLeave }: { room: Room; onLeave: () => void }) {
         ) : (
           <p className="text-center text-muted">Waiting for the host to start…</p>
         )}
+
+        {/* A game needs two people. Rather than leave someone staring at a
+            disabled button, offer the thing that does work alone. */}
+        {state.players.length < 2 ? (
+          <Link href="/solo" className="btn-ghost mt-2 w-full">
+            Play solo against the AI while you wait
+          </Link>
+        ) : null}
       </div>
     </main>
   );

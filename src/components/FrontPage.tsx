@@ -117,6 +117,7 @@ export function FrontPage() {
               <Link href="/play" className="btn-primary px-7 text-base sm:px-9 sm:text-lg">
                 Play now
               </Link>
+              <Link href="/solo" className="btn-ghost px-5 text-base">Play solo vs the AI</Link>
               <a href="#how" className="btn-ghost px-5 text-base">How it works</a>
             </div>
 
