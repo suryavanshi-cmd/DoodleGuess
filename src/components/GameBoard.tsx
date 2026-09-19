@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { Canvas } from "./Canvas";
 import { ClueBoard } from "./ClueBoard";
 import { Confetti } from "./Confetti";
-import { Feed, type FeedTab } from "./Feed";
-import { PlayerList } from "./PlayerList";
+import { Feed, FeedList, FeedTabs, GuessInput, type FeedTab } from "./Feed";
+import { FeedDrops } from "./FeedDrops";
+import { PlayerList, PlayerStrip } from "./PlayerList";
 import { ReactionBar, ReactionOverlay } from "./Reactions";
 import { Replay } from "./Replay";
 import { Timer } from "./Timer";
@@ -23,6 +24,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
   const [tab, setTab] = useState<FeedTab>("guesses");
   const [celebrations, setCelebrations] = useState(0);
   const [hint, setHint] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const muted = useMuted();
   const lastCorrect = useRef<string | null>(null);
 
@@ -68,22 +70,40 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
 
   if (!state) return null;
 
-  return (
-    <div className="mx-auto w-full max-w-7xl px-3 py-3 sm:px-4">
-      <header className="card mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
-        <div className="flex items-center gap-2">
-          <span className="chip">Round {state.roundNumber}/{state.totalRounds}</span>
-          {round?.difficulty ? <span className="chip capitalize">{round.difficulty}</span> : null}
-          {round?.doublePoints ? <span className="chip bg-warning/20 text-warning">⚡ Double points</span> : null}
-        </div>
+  const send = async (text: string) => {
+    if (tab === "chat") {
+      await actions.chat(text);
+      return;
+    }
+    const result = await actions.guess(text);
+    if (result?.verdict === "close") {
+      setHint("Almost — try again!");
+      ping("close");
+      setTimeout(() => setHint(null), 4_000);
+    }
+  };
 
-        <div className="order-last w-full text-center sm:order-none sm:w-auto sm:flex-1">
-          <p className="font-mono text-2xl font-black tracking-[0.25em] sm:text-3xl" aria-label="The word">
+  const placeholder = tab === "chat"
+    ? "Say something nice…"
+    : canGuess ? "Type your guess…" : "Guessing is paused";
+
+  return (
+    <div className="mx-auto flex h-dvh w-full max-w-7xl flex-col gap-2 overflow-hidden px-2 py-2 sm:px-3 lg:gap-3 lg:px-4 lg:py-3">
+      <header className="card flex items-center gap-2 px-2.5 py-2 sm:gap-3 sm:px-3">
+        <span className="chip shrink-0 px-2 text-xs sm:text-sm">
+          {state.roundNumber}/{state.totalRounds}
+        </span>
+        {round?.doublePoints ? (
+          <span className="chip hidden shrink-0 bg-warning/20 text-warning sm:inline-flex">⚡ Double</span>
+        ) : null}
+
+        <div className="min-w-0 flex-1 text-center">
+          <p className="truncate font-mono text-xl font-black tracking-[0.2em] sm:text-2xl" aria-label="The word">
             {wordDisplay || (state.status === "picking" ? "· · ·" : "")}
           </p>
-          <p className="text-xs text-muted">
+          <p className="truncate text-[11px] text-muted sm:text-xs">
             {state.status === "picking"
-              ? `${state.players.find((p) => p.id === round?.drawerId)?.name ?? "Someone"} is choosing a word…`
+              ? `${state.players.find((p) => p.id === round?.drawerId)?.name ?? "Someone"} is choosing…`
               : round?.status === "ended"
                 ? "That was the word"
                 : isDrawer
@@ -92,22 +112,35 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
           </p>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Timer endsAt={state.status === "drawing" ? round?.endsAt ?? null : null} serverTime={state.serverTime} totalSeconds={state.settings.turnSeconds} />
+        <Timer
+          endsAt={state.status === "drawing" ? round?.endsAt ?? null : null}
+          serverTime={state.serverTime}
+          totalSeconds={state.settings.turnSeconds}
+        />
+
+        <button
+          type="button"
+          className="btn-ghost shrink-0 px-2.5 lg:hidden"
+          onClick={() => setSheetOpen(true)}
+          aria-label="Open chat and guess history"
+        >
+          💬
+        </button>
+        <span className="hidden shrink-0 gap-2 sm:flex">
           <button
-            type="button" className="btn-ghost px-3" aria-label={muted ? "Unmute sounds" : "Mute sounds"}
+            type="button" className="btn-ghost px-2.5" aria-label={muted ? "Unmute sounds" : "Mute sounds"}
             onClick={() => setMuted(!muted)}
           >
             {muted ? "🔇" : "🔊"}
           </button>
           <ThemeToggle />
           <button type="button" className="btn-ghost px-3" onClick={onLeave}>Leave</button>
-        </div>
+        </span>
       </header>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-3">
-          <div className="relative">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          <div className="relative flex shrink-0 flex-col justify-center lg:min-h-0 lg:flex-1">
             {textMode && round ? (
               <ClueBoard
                 round={round}
@@ -124,8 +157,11 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
                 onCanvas={room.pushCanvas}
               />
             )}
+
             <ReactionOverlay reactions={reactions} />
             <Confetti trigger={celebrations} />
+            {/* Phone: the feed lives here, dropping in over the board. */}
+            <FeedDrops entries={feed} serverTime={state.serverTime} className="lg:hidden" />
 
             {isDrawer && state.status === "picking" && state.yourChoices && round ? (
               <WordPicker choices={state.yourChoices} onPick={(index) => void actions.choose(round.id, index)} />
@@ -172,12 +208,16 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="card min-h-0 flex-1 overflow-hidden lg:hidden">
+            <FeedList entries={feed} tab={tab} />
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
             <ReactionBar onReact={(emoji) => void actions.react(emoji)} />
             {state.settings.powerUpsEnabled && !isDrawer ? (
               <button
                 type="button"
-                className="btn-ghost ml-auto"
+                className="btn-ghost ml-auto shrink-0 px-3"
                 disabled={!canBuyHint}
                 onClick={async () => {
                   const result = await actions.powerUp("hint");
@@ -188,14 +228,14 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
                 }}
                 title={`Reveal one letter for ${POWER_UP_COSTS.hint} points`}
               >
-                🔍 Hint ({POWER_UP_COSTS.hint})
+                🔍 <span className="hidden sm:inline">Hint</span> ({POWER_UP_COSTS.hint})
               </button>
             ) : null}
           </div>
         </div>
 
-        <aside className="flex min-h-0 flex-col gap-3">
-          <div className="card order-2 p-2.5 lg:order-1">
+        <aside className="hidden min-h-0 flex-col gap-3 lg:flex">
+          <div className="card p-2.5">
             <PlayerList
               players={state.players}
               meId={me?.id ?? null}
@@ -209,28 +249,53 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
           </div>
 
           <Feed
-            className="order-1 lg:order-2"
             entries={feed}
             tab={tab}
             onTab={setTab}
             disabled={tab === "guesses" ? !canGuess : false}
             hint={tab === "guesses" ? guessHint : null}
-            placeholder={tab === "chat" ? "Say something nice…" : canGuess ? "Type your guess…" : "Guessing is paused"}
-            onSend={async (text) => {
-              if (tab === "chat") {
-                await actions.chat(text);
-                return;
-              }
-              const result = await actions.guess(text);
-              if (result?.verdict === "close") {
-                setHint("Almost — try again!");
-                ping("close");
-                setTimeout(() => setHint(null), 4_000);
-              }
-            }}
+            placeholder={placeholder}
+            onSend={send}
           />
         </aside>
       </div>
+
+      {/* Phone: roster rail and the guess box stay put at the bottom. */}
+      <div className="flex shrink-0 flex-col gap-2 lg:hidden">
+        <PlayerStrip players={state.players} meId={me?.id ?? null} drawerId={round?.drawerId ?? null} />
+        <GuessInput
+          tab={tab}
+          onSend={send}
+          disabled={tab === "guesses" ? !canGuess : false}
+          placeholder={placeholder}
+          hint={tab === "guesses" ? guessHint : null}
+        />
+      </div>
+
+      {sheetOpen ? (
+        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSheetOpen(false)}>
+          <div
+            className="animate-sheet-down card absolute inset-x-2 top-2 flex max-h-[70dvh] flex-col overflow-hidden"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 pr-2">
+              <div className="min-w-0 flex-1"><FeedTabs tab={tab} onTab={setTab} /></div>
+              <button type="button" className="btn-ghost px-3" onClick={() => setSheetOpen(false)} aria-label="Close">✕</button>
+            </div>
+            <FeedList entries={feed} tab={tab} />
+            <div className="flex items-center gap-2 border-t border-line p-2.5">
+              <button
+                type="button" className="btn-ghost flex-1 px-2" aria-label={muted ? "Unmute" : "Mute"}
+                onClick={() => setMuted(!muted)}
+              >
+                {muted ? "🔇" : "🔊"}
+              </button>
+              <ThemeToggle className="flex-1" />
+              <button type="button" className="btn-ghost flex-1 px-2" onClick={onLeave}>Leave</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -19,10 +19,56 @@ function entryClass(entry: FeedEntry): string {
   }
 }
 
-export function Feed({ entries, tab, onTab, onSend, disabled, placeholder, hint, className = "" }: {
-  entries: FeedEntry[];
+export function visibleEntries(entries: FeedEntry[], tab: FeedTab): FeedEntry[] {
+  return entries.filter((entry) => (tab === "chat" ? entry.kind === "chat" : GUESS_KINDS.has(entry.kind)));
+}
+
+export function FeedTabs({ tab, onTab }: { tab: FeedTab; onTab: (tab: FeedTab) => void }) {
+  return (
+    <div className="flex border-b border-line">
+      {(["guesses", "chat"] as FeedTab[]).map((id) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => onTab(id)}
+          className={`min-h-11 flex-1 px-3 text-sm font-semibold transition
+            ${tab === id ? "border-b-2 border-brand text-brand" : "text-muted"}`}
+        >
+          {id === "guesses" ? "Guesses" : "Room chat"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function FeedList({ entries, tab }: { entries: FeedEntry[]; tab: FeedTab }) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const visible = visibleEntries(entries, tab);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, [visible.length, tab]);
+
+  return (
+    <div ref={listRef} className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2.5 text-sm" aria-live="polite">
+      {visible.length === 0 ? (
+        <p className="p-2 text-muted">
+          {tab === "chat" ? "Banter goes here — it stays out of the guess feed." : "Guesses will show up here."}
+        </p>
+      ) : null}
+      {visible.map((entry) => (
+        <p key={entry.id} className={`rounded-lg px-2 py-1 ${entryClass(entry)}`}>
+          {entry.name && (entry.kind === "chat" || entry.kind === "guess") ? <strong>{entry.name}: </strong> : null}
+          {entry.text}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+export function GuessInput({ tab, onSend, disabled, placeholder, hint, className = "" }: {
   tab: FeedTab;
-  onTab: (tab: FeedTab) => void;
   onSend: (text: string) => void;
   disabled: boolean;
   placeholder: string;
@@ -30,13 +76,6 @@ export function Feed({ entries, tab, onTab, onSend, disabled, placeholder, hint,
   className?: string;
 }) {
   const [text, setText] = useState("");
-  const listRef = useRef<HTMLDivElement | null>(null);
-  const visible = entries.filter((entry) => (tab === "chat" ? entry.kind === "chat" : GUESS_KINDS.has(entry.kind)));
-
-  useEffect(() => {
-    const list = listRef.current;
-    if (list) list.scrollTop = list.scrollHeight;
-  }, [visible.length, tab]);
 
   const submit = () => {
     const value = text.trim();
@@ -46,38 +85,13 @@ export function Feed({ entries, tab, onTab, onSend, disabled, placeholder, hint,
   };
 
   return (
-    <div className={`card flex min-h-0 flex-1 flex-col overflow-hidden ${className}`}>
-      <div className="flex border-b border-line">
-        {(["guesses", "chat"] as FeedTab[]).map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onTab(id)}
-            className={`min-h-11 flex-1 px-3 text-sm font-semibold capitalize transition
-              ${tab === id ? "border-b-2 border-brand text-brand" : "text-muted"}`}
-          >
-            {id === "guesses" ? "Guesses" : "Room chat"}
-          </button>
-        ))}
-      </div>
-
-      <div ref={listRef} className="min-h-40 flex-1 space-y-1 overflow-y-auto p-2.5 text-sm" aria-live="polite">
-        {visible.length === 0 ? (
-          <p className="p-2 text-muted">
-            {tab === "chat" ? "Banter goes here — it stays out of the guess feed." : "Guesses will show up here."}
-          </p>
-        ) : null}
-        {visible.map((entry) => (
-          <p key={entry.id} className={`rounded-lg px-2 py-1 ${entryClass(entry)}`}>
-            {entry.name && (entry.kind === "chat" || entry.kind === "guess") ? <strong>{entry.name}: </strong> : null}
-            {entry.text}
-          </p>
-        ))}
-      </div>
-
-      {hint ? <p className="border-t border-line bg-warning/10 px-3 py-2 text-sm font-medium text-warning">{hint}</p> : null}
-
-      <div className="flex gap-2 border-t border-line p-2.5">
+    <div className={className}>
+      {hint ? (
+        <p className="rounded-t-xl border-x border-t border-warning/40 bg-warning/10 px-3 py-1.5 text-center text-sm font-medium text-warning">
+          {hint}
+        </p>
+      ) : null}
+      <div className="flex gap-2">
         <input
           className="input"
           value={text}
@@ -88,10 +102,33 @@ export function Feed({ entries, tab, onTab, onSend, disabled, placeholder, hint,
           onKeyDown={(event) => { if (event.key === "Enter") submit(); }}
           aria-label={tab === "chat" ? "Room chat message" : "Your guess"}
         />
-        <button type="button" className="btn-primary px-4" onClick={submit} disabled={disabled}>
+        <button type="button" className="btn-primary px-5" onClick={submit} disabled={disabled}>
           {tab === "chat" ? "Send" : "Guess"}
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Desktop sidebar composition: tabs, history and input in one card. */
+export function Feed({ entries, tab, onTab, onSend, disabled, placeholder, hint, className = "" }: {
+  entries: FeedEntry[];
+  tab: FeedTab;
+  onTab: (tab: FeedTab) => void;
+  onSend: (text: string) => void;
+  disabled: boolean;
+  placeholder: string;
+  hint?: string | null;
+  className?: string;
+}) {
+  return (
+    <div className={`card flex min-h-0 flex-1 flex-col overflow-hidden ${className}`}>
+      <FeedTabs tab={tab} onTab={onTab} />
+      <FeedList entries={entries} tab={tab} />
+      <GuessInput
+        tab={tab} onSend={onSend} disabled={disabled} placeholder={placeholder} hint={hint}
+        className="border-t border-line p-2.5"
+      />
     </div>
   );
 }

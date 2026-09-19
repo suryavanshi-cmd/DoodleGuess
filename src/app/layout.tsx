@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#7c3aed",
+  themeColor: "#0e1f3c",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -21,7 +21,7 @@ export const viewport: Viewport = {
 const themeScript = `
   try {
     var stored = localStorage.getItem("doodleguess:theme");
-    var theme = stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    var theme = stored || "dark";
     document.documentElement.setAttribute("data-theme", theme);
   } catch (e) {}
 `;

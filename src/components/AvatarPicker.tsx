@@ -19,10 +19,10 @@ export function AvatarBadge({ avatar, size = 40, ring }: { avatar: Avatar; size?
 
 export function AvatarPicker({ value, onChange }: { value: Avatar; onChange: (next: Avatar) => void }) {
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-2.5">
       <div>
         <span className="label">Pick a character</span>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
+        <div className="no-scrollbar mt-1.5 flex w-full min-w-0 gap-1.5 overflow-x-auto sm:flex-wrap">
           {EMOJI.map((emoji) => (
             <button
               key={emoji}
@@ -30,7 +30,7 @@ export function AvatarPicker({ value, onChange }: { value: Avatar; onChange: (ne
               onClick={() => onChange({ ...value, emoji })}
               aria-label={`Avatar ${emoji}`}
               aria-pressed={value.emoji === emoji}
-              className={`flex h-10 w-10 items-center justify-center rounded-xl border text-lg transition
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-lg transition
                 ${value.emoji === emoji ? "border-brand bg-brand/10 scale-105" : "border-line bg-surface-2"}`}
             >
               {emoji}
@@ -40,7 +40,7 @@ export function AvatarPicker({ value, onChange }: { value: Avatar; onChange: (ne
       </div>
       <div>
         <span className="label">Pick a colour</span>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
+        <div className="no-scrollbar mt-1.5 flex w-full min-w-0 gap-1.5 overflow-x-auto sm:flex-wrap">
           {COLORS.map((color) => (
             <button
               key={color}
@@ -48,7 +48,7 @@ export function AvatarPicker({ value, onChange }: { value: Avatar; onChange: (ne
               onClick={() => onChange({ ...value, color })}
               aria-label={`Colour ${color}`}
               aria-pressed={value.color === color}
-              className={`h-10 w-10 rounded-xl border-2 transition ${value.color === color ? "border-fg scale-110" : "border-transparent"}`}
+              className={`h-10 w-10 shrink-0 rounded-xl border-2 transition ${value.color === color ? "border-fg scale-110" : "border-transparent"}`}
               style={{ background: color }}
             />
           ))}

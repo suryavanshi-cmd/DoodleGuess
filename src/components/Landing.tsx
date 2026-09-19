@@ -66,13 +66,13 @@ export function Landing() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center px-4 py-5">
+    <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-start px-3 py-4 sm:justify-center sm:px-4 sm:py-5">
       <header className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
+          <h1 className="text-3xl font-black tracking-tight sm:text-5xl">
             <span className="text-gradient">Doodle</span>Guess
           </h1>
-          <p className="mt-0.5 text-muted">Draw it, or clue it. Then watch everyone flail.</p>
+          <p className="mt-0.5 text-sm text-muted sm:text-base">Draw it, or clue it. Then watch everyone flail.</p>
         </div>
         <ThemeToggle />
       </header>
@@ -97,23 +97,23 @@ export function Landing() {
       ) : null}
 
       <div className="grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
-        <section className="card p-4 sm:p-5">
-          <div className="grid gap-2 sm:grid-cols-2">
+        <section className="card min-w-0 p-3 sm:p-5">
+          <div className="grid grid-cols-2 gap-2">
             {MODE_CARDS.map((mode) => (
               <button
                 key={mode.id}
                 type="button"
                 onClick={() => setSettings({ ...settings, gameMode: mode.id })}
                 aria-pressed={settings.gameMode === mode.id}
-                className={`flex items-center gap-3 rounded-2xl border-2 p-3 text-left transition
+                className={`flex items-center gap-2 rounded-2xl border-2 p-2.5 text-left transition sm:gap-3 sm:p-3
                   ${settings.gameMode === mode.id
                     ? "border-brand bg-brand/10 shadow-sm"
                     : "border-line bg-surface-2 hover:border-brand/40"}`}
               >
-                <span className="text-3xl" aria-hidden>{mode.icon}</span>
-                <span>
+                <span className="text-2xl sm:text-3xl" aria-hidden>{mode.icon}</span>
+                <span className="min-w-0">
                   <span className="block font-bold">{mode.label}</span>
-                  <span className="block text-xs text-muted">{mode.hint}</span>
+                  <span className="hidden text-xs text-muted sm:block">{mode.hint}</span>
                 </span>
               </button>
             ))}
@@ -153,8 +153,8 @@ export function Landing() {
           ) : null}
         </section>
 
-        <div className="flex flex-col gap-4">
-          <section className="card p-4 sm:p-5">
+        <div className="flex min-w-0 flex-col gap-4">
+          <section className="card min-w-0 p-3 sm:p-5">
             <h2 className="text-lg font-bold">Join a room</h2>
             <div className="mt-2 flex gap-2">
               <input
@@ -184,7 +184,7 @@ export function Landing() {
             ) : null}
           </section>
 
-          <section className="card p-4 sm:p-5">
+          <section className="card hidden min-w-0 p-4 sm:block sm:p-5">
             <h2 className="text-lg font-bold">Why it plays better</h2>
             <ul className="mt-2 grid gap-2 text-sm text-muted sm:grid-cols-2 lg:grid-cols-1">
               <li>🎯 <strong className="text-fg">Typos still count</strong> — “elefant” scores; “almost!” stays private.</li>

@@ -4,6 +4,39 @@ import { AvatarBadge } from "./AvatarPicker";
 import { POWER_UP_COSTS } from "@/lib/game/scoring";
 import type { PublicPlayer } from "@/lib/game/types";
 
+/**
+ * Phone layout: the roster as a single scrollable rail, so scores stay visible
+ * without costing a screenful of height.
+ */
+export function PlayerStrip({ players, meId, drawerId }: {
+  players: PublicPlayer[];
+  meId: string | null;
+  drawerId: string | null;
+}) {
+  return (
+    <ul className="no-scrollbar flex w-full min-w-0 gap-1.5 overflow-x-auto">
+      {players.map((player) => (
+        <li
+          key={player.id}
+          className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-2 py-1
+            ${player.guessedCorrect ? "border-success/50 bg-success/10" : "border-line bg-surface"}
+            ${player.id === meId ? "ring-1 ring-brand" : ""} ${player.connected ? "" : "opacity-50"}`}
+        >
+          <AvatarBadge avatar={player.avatar} size={26} ring={player.id === drawerId} />
+          <span className="leading-tight">
+            <span className="block max-w-20 truncate text-xs font-semibold">
+              {player.name}
+              {player.id === drawerId ? " ✏️" : ""}
+              {player.guessedCorrect ? " ✅" : ""}
+            </span>
+            <span className="block text-[11px] text-muted">{player.score}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function PlayerList({ players, meId, drawerId, canFreeze, onFreeze }: {
   players: PublicPlayer[];
   meId: string | null;

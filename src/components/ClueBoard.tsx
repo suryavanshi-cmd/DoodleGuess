@@ -27,7 +27,7 @@ export function ClueBoard({ round, isGiver, secretWord, onSubmit, onSuggest }: {
 
   if (writing && isGiver && secretWord) {
     return (
-      <div className="card flex min-h-[26rem] flex-col justify-center p-5 sm:p-8">
+      <div className="card flex max-h-full flex-col justify-center overflow-y-auto p-4 sm:p-6 lg:p-8">
         <p className="text-center text-sm font-semibold text-muted">Your word is</p>
         <p className="mt-1 text-center text-3xl font-black tracking-wide sm:text-4xl">
           {secretWord.toUpperCase()}
@@ -107,7 +107,7 @@ export function ClueBoard({ round, isGiver, secretWord, onSubmit, onSuggest }: {
 
   if (writing) {
     return (
-      <div className="card flex min-h-[26rem] flex-col items-center justify-center gap-3 p-8 text-center">
+      <div className="card flex min-h-[12rem] flex-col items-center justify-center gap-3 p-6 text-center sm:min-h-[16rem] lg:min-h-[22rem]">
         <span className="text-5xl" aria-hidden>✍️</span>
         <p className="text-xl font-bold">The Clue-Giver is writing…</p>
         <p className="text-muted">Get ready — the clock starts the moment their clue lands.</p>
@@ -116,7 +116,7 @@ export function ClueBoard({ round, isGiver, secretWord, onSubmit, onSuggest }: {
   }
 
   return (
-    <div className="card flex min-h-[26rem] flex-col items-center justify-center gap-4 p-6 text-center sm:p-10">
+    <div className="card flex min-h-[12rem] flex-col items-center justify-center gap-3 p-5 text-center sm:min-h-[16rem] sm:gap-4 lg:min-h-[22rem] lg:p-10">
       <p className="label">{round.status === "ended" ? "The clue was" : "The clue"}</p>
       <p className="text-balance text-2xl font-black leading-snug sm:text-4xl">
         {round.clueText ?? "…"}

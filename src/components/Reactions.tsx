@@ -6,13 +6,13 @@ const EMOJI = ["👏", "🔥", "😂", "😮", "❤️", "🎨"];
 
 export function ReactionBar({ onReact }: { onReact: (emoji: string) => void }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="no-scrollbar flex min-w-0 gap-1.5 overflow-x-auto">
       {EMOJI.map((emoji) => (
         <button
           key={emoji}
           type="button"
           onClick={() => onReact(emoji)}
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-surface-2 text-xl transition active:scale-90"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-2 text-lg transition active:scale-90 sm:h-11 sm:w-11 sm:text-xl"
           aria-label={`React with ${emoji}`}
         >
           {emoji}

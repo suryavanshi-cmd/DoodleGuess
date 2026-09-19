@@ -5,38 +5,39 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-  --bg: #fff7f5;
-  --bg-glow-a: #ffd9d4;
-  --bg-glow-b: #ffe9cf;
+  /* Light: still blue, just lifted — Facebook's blue-grey canvas. */
+  --bg: #dbe7fb;
+  --bg-glow-a: #b9d2ff;
+  --bg-glow-b: #9cc0ff;
   --surface: #ffffff;
-  --surface-2: #fff1ee;
-  --border: #f3d3cd;
-  --fg: #2a0d0a;
-  --fg-muted: #8a5a53;
-  /* Darker than a pure red so white label text clears AA on buttons. */
-  --brand: #c81e1e;
-  --brand-strong: #9f1616;
+  --surface-2: #eef4ff;
+  --border: #c7d9f5;
+  --fg: #0b1a33;
+  --fg-muted: #55708f;
+  /* Darker than Facebook's #1877F2 so white label text clears AA. */
+  --brand: #0e5fd8;
+  --brand-strong: #0a49a8;
   --brand-fg: #ffffff;
-  --accent: #f97316;
-  --success: #15803d;
-  --warning: #b45309;
-  --danger: #b91c1c;
+  --accent: #38bdf8;
+  --success: #12805c;
+  --warning: #9a6200;
+  --danger: #c2261f;
 }
 
 [data-theme="dark"] {
-  --bg: #16070a;
-  --bg-glow-a: #48111a;
-  --bg-glow-b: #2b0d14;
-  --surface: #230d12;
-  --surface-2: #2f1219;
-  --border: #4a1f26;
-  --fg: #ffeceb;
-  --fg-muted: #d3a09b;
-  --brand: #ff5a5a;
-  --brand-strong: #ff7a6b;
-  --brand-fg: #2a0508;
-  --accent: #fbbf24;
-  --success: #4ade80;
+  --bg: #071226;
+  --bg-glow-a: #10336e;
+  --bg-glow-b: #0a2450;
+  --surface: #0e1f3c;
+  --surface-2: #142a4e;
+  --border: #22406f;
+  --fg: #e9f1ff;
+  --fg-muted: #9ab3d9;
+  --brand: #1877f2;
+  --brand-strong: #0e5fd8;
+  --brand-fg: #ffffff;
+  --accent: #4cc9f0;
+  --success: #34d399;
   --warning: #fbbf24;
   --danger: #ff6b6b;
 }
@@ -60,18 +61,13 @@
 }
 
 html, body {
-  background: var(--bg);
-  color: var(--fg);
-}
-
-body {
   min-height: 100dvh;
-  /* Layered warm glows rather than a flat red wash: keeps large areas of red
-     from fighting the content for attention. */
+  background-color: var(--bg);
+  color: var(--fg);
   background-image:
-    radial-gradient(48rem 32rem at 12% -8%, var(--bg-glow-a), transparent 62%),
-    radial-gradient(42rem 30rem at 105% 8%, var(--bg-glow-b), transparent 58%),
-    radial-gradient(38rem 28rem at 50% 118%, var(--bg-glow-a), transparent 60%);
+    radial-gradient(52rem 34rem at 10% -10%, var(--bg-glow-a), transparent 60%),
+    radial-gradient(46rem 32rem at 105% 6%, var(--bg-glow-b), transparent 58%),
+    linear-gradient(180deg, var(--bg-glow-b) 0%, var(--bg) 46%, var(--bg) 100%);
   background-attachment: fixed;
   -webkit-tap-highlight-color: transparent;
 }
@@ -120,6 +116,19 @@ body {
 }
 .animate-float-up { animation: float-up 2.2s ease-out forwards; }
 
+@keyframes drop-in {
+  from { transform: translateY(-120%) scale(0.92); opacity: 0; }
+  60%  { transform: translateY(6%) scale(1.02); opacity: 1; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+.animate-drop-in { animation: drop-in 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.3); }
+
+@keyframes sheet-down {
+  from { transform: translateY(-8%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.animate-sheet-down { animation: sheet-down 0.22s ease-out; }
+
 @keyframes pop-in {
   from { transform: scale(0.85); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
@@ -127,8 +136,12 @@ body {
 .animate-pop-in { animation: pop-in 0.22s ease-out; }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-float-up, .animate-pop-in { animation: none; }
+  .animate-float-up, .animate-pop-in, .animate-drop-in, .animate-sheet-down { animation: none; }
 }
+
+/* Horizontal strips (the mobile player rail) should not show a scrollbar. */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
 .canvas-surface {
   touch-action: none;
