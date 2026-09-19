@@ -96,7 +96,10 @@ Browser ──HTTP──> Next.js route handlers ──service role──> Supab
 RLS is on for every table. Anonymous browsers can read only the room whose code
 they present in an `x-room-code` header, never `round_secrets`, never
 `players.token_hash`, and never another player's private feed entries. All
-writes are revoked from `anon`.
+writes are revoked from `anon`. These were verified against the live project
+with the anonymous key — which is how the `token_hash` grant bug in
+`20260918000002_rls.sql` was caught and fixed in `20260918000004`: a
+column-level `REVOKE` does nothing while table-level `SELECT` is still granted.
 
 ## Running locally
 
@@ -131,7 +134,11 @@ npm run lint
 npm run typecheck
 ```
 
-Covers the scoring curve (speed, rank, streak, double points, drawer payout and
+`tests/supabase-integration.test.ts` replays a full turn against a real
+Supabase project and is skipped unless `NEXT_PUBLIC_SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY` are set, so `npm test` stays offline by default.
+
+The offline suite covers the scoring curve (speed, rank, streak, double points, drawer payout and
 its cap), fuzzy matching (typos, transpositions, plurals, accents, articles,
 and the short-word cases it must *not* accept), the mask and hint schedule, the
 language and word-leak filters, and a full game loop against the in-memory
