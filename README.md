@@ -6,6 +6,34 @@ matching, real drawing tools, an end-of-round replay and a post-game recap.
 Built with Next.js (App Router) + TypeScript + Tailwind CSS, Supabase
 (Postgres + Realtime) and an HTML5 canvas that works with mouse and touch.
 
+## Two ways to play
+
+**Draw it** — the classic: sketch the word on the canvas.
+
+**Clue it** — no canvas at all. The Clue-Giver writes one cryptic clue, at most
+60 characters, and everyone guesses from that. Same rooms, same rotation, same
+scoring; the host picks the mode in the lobby or on the home page.
+
+Clue mode costs nothing to run, by design — there is no AI call anywhere in it:
+
+- **Clues** are written by players. "Need inspiration?" reads a bundled bank of
+  two hand-written clues for every word in the built-in packs (392 of them), and
+  clues that players write and that somebody actually guesses are saved back to
+  the `clue_bank` table, so the pool grows from real play.
+- **No-giveaway checks** are local string work: the word itself, a substring, a
+  plural or stem, an acrostic, letter-by-letter spelling, a rhyme, or a clue
+  that points at the sound ("rhymes with…"). A test asserts that every bundled
+  clue survives its own validator.
+- **Guess matching** runs in-process: exact and typo matches through the same
+  Damerau-Levenshtein path as drawing mode, plus a bundled near-synonym table.
+  A synonym scores "very close" at 60% — you had the idea without landing the
+  word — and the round summary tags exact, near-spelling and synonym guesses.
+
+The rhyme check is tuned to catch what a player would actually try. Minimal
+pairs are rejected (bat for CAT); shared grammatical endings are not, because
+otherwise every `-ing` word "rhymes" with every other and "keep them moving"
+would be refused as a clue for JUGGLING.
+
 ## How a game runs
 
 1. Someone creates a room and shares the 6-character code (or the invite link).
@@ -92,6 +120,19 @@ Browser ──HTTP──> Next.js route handlers ──service role──> Supab
 | `feed_entries` | guess feed, chat and system lines (with private entries) |
 | `strokes` | persisted stroke list for replay and mid-turn joiners |
 | `word_packs` | host-uploaded custom word lists |
+| `clue_bank` | player-contributed clues with upvotes (the bundled bank ships in the app) |
+
+Clue mode reuses `rounds` and `guesses` rather than adding parallel
+`text_rounds`/`text_guesses` tables — the rotation, timers, scoring, reconnect
+handling and recap are identical, and a second state machine would duplicate
+all of it. The mode-specific columns (`clue_text`, `clue_source`, `match_type`)
+live on the existing rows, and `rooms.game_mode` is a generated column over
+`settings` so there is exactly one source of truth.
+
+The synonym table is bundled in the app rather than imported from WordNet: the
+full dump is megabytes, almost none of it about a 200-word game, and its looser
+senses make for bad rulings. It is a plain object, so a lookup costs nothing and
+adds no latency to a guess.
 
 RLS is on for every table. Anonymous browsers can read only the room whose code
 they present in an `x-room-code` header, never `round_secrets`, never

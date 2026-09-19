@@ -75,6 +75,16 @@ export function nextStreak(priorStreak: number, outcome: "correct" | "missed" | 
   return outcome === "correct" ? priorStreak + 1 : 0;
 }
 
+/**
+ * A synonym shows you had the idea without landing the word, so it scores —
+ * but not as much as saying it.
+ */
+export const SYNONYM_POINTS_FACTOR = 0.6;
+
+export function synonymPoints(fullPoints: number): number {
+  return Math.max(1, Math.round(fullPoints * SYNONYM_POINTS_FACTOR));
+}
+
 export const POWER_UP_COSTS = {
   hint: 25,
   freeze: 40,

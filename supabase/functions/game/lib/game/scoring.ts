@@ -70,6 +70,12 @@ export function nextStreak(priorStreak: number, outcome: "correct" | "missed" | 
   return outcome === "correct" ? priorStreak + 1 : 0;
 }
 
+export const SYNONYM_POINTS_FACTOR = 0.6;
+
+export function synonymPoints(fullPoints: number): number {
+  return Math.max(1, Math.round(fullPoints * SYNONYM_POINTS_FACTOR));
+}
+
 export const POWER_UP_COSTS = {
   hint: 25,
   freeze: 40,

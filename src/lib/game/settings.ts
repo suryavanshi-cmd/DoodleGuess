@@ -1,6 +1,10 @@
 import type { PackId } from "./words";
 
+export type GameMode = "draw" | "text_clue";
+
 export interface RoomSettings {
+  /** Draw the word, or write a cryptic clue for it. */
+  gameMode: GameMode;
   rounds: number;
   turnSeconds: number;
   pack: PackId;
@@ -19,6 +23,7 @@ export interface RoomSettings {
  * forgiving 80s clock, hints on, strict filter on.
  */
 export const DEFAULT_SETTINGS: RoomSettings = {
+  gameMode: "draw",
   rounds: 3,
   turnSeconds: 80,
   pack: "simple",
@@ -38,6 +43,7 @@ export const LIMITS = {
 } as const;
 
 const PACKS: PackId[] = ["simple", "tricky", "mixed", "custom"];
+const MODES: GameMode[] = ["draw", "text_clue"];
 
 function clampInt(value: unknown, fallback: number, min: number, max: number): number {
   const n = typeof value === "number" ? value : Number(value);
@@ -55,6 +61,7 @@ export function normalizeSettings(input: unknown, base: RoomSettings = DEFAULT_S
   const pack = PACKS.includes(raw.pack as PackId) ? (raw.pack as PackId) : base.pack;
   const hardcore = bool(raw.hardcore, base.hardcore);
   const settings: RoomSettings = {
+    gameMode: MODES.includes(raw.gameMode as GameMode) ? (raw.gameMode as GameMode) : base.gameMode,
     rounds: clampInt(raw.rounds, base.rounds, LIMITS.rounds.min, LIMITS.rounds.max),
     turnSeconds: clampInt(raw.turnSeconds, base.turnSeconds, LIMITS.turnSeconds.min, LIMITS.turnSeconds.max),
     pack,
@@ -83,4 +90,6 @@ export const TIMING = {
   reconnectGraceMs: 60_000,
   /** Freeze power-up duration. */
   freezeMs: 5_000,
+  /** How long the Clue-Giver has to write their clue in text mode. */
+  clueSeconds: 45,
 } as const;

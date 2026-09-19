@@ -22,7 +22,7 @@ export function AvatarPicker({ value, onChange }: { value: Avatar; onChange: (ne
     <div className="space-y-3">
       <div>
         <span className="label">Pick a character</span>
-        <div className="mt-1.5 flex flex-wrap gap-2">
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
           {EMOJI.map((emoji) => (
             <button
               key={emoji}
@@ -30,8 +30,8 @@ export function AvatarPicker({ value, onChange }: { value: Avatar; onChange: (ne
               onClick={() => onChange({ ...value, emoji })}
               aria-label={`Avatar ${emoji}`}
               aria-pressed={value.emoji === emoji}
-              className={`flex h-11 w-11 items-center justify-center rounded-xl border text-xl transition
-                ${value.emoji === emoji ? "border-brand bg-brand/10" : "border-line bg-surface-2"}`}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl border text-lg transition
+                ${value.emoji === emoji ? "border-brand bg-brand/10 scale-105" : "border-line bg-surface-2"}`}
             >
               {emoji}
             </button>
@@ -40,7 +40,7 @@ export function AvatarPicker({ value, onChange }: { value: Avatar; onChange: (ne
       </div>
       <div>
         <span className="label">Pick a colour</span>
-        <div className="mt-1.5 flex flex-wrap gap-2">
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
           {COLORS.map((color) => (
             <button
               key={color}
@@ -48,7 +48,7 @@ export function AvatarPicker({ value, onChange }: { value: Avatar; onChange: (ne
               onClick={() => onChange({ ...value, color })}
               aria-label={`Colour ${color}`}
               aria-pressed={value.color === color}
-              className={`h-11 w-11 rounded-xl border-2 transition ${value.color === color ? "border-fg scale-105" : "border-transparent"}`}
+              className={`h-10 w-10 rounded-xl border-2 transition ${value.color === color ? "border-fg scale-110" : "border-transparent"}`}
               style={{ background: color }}
             />
           ))}

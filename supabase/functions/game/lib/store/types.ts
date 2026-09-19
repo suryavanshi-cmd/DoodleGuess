@@ -67,6 +67,9 @@ export interface RoundRow {
   ended_at: string | null;
 
   revealed_word: string | null;
+
+  clue_text: string | null;
+  clue_source: "human" | "clue_bank" | null;
   created_at: string;
 }
 
@@ -85,6 +88,7 @@ export interface GuessRow {
   guess_text: string;
   is_correct: boolean;
   is_close: boolean;
+  match_type: import("../game/types.ts").MatchType;
   points_awarded: number;
   ms_elapsed: number | null;
   guessed_at: string;
@@ -105,6 +109,14 @@ export interface StrokeRow {
   round_id: string;
   seq: number;
   data: Stroke;
+}
+
+export interface ClueBankRow {
+  id: string;
+  word: string;
+  clue_text: string;
+  upvotes: number;
+  created_at: string;
 }
 
 export interface WordPackRow {
@@ -151,4 +163,8 @@ export interface GameStore {
 
   createWordPack(row: WordPackRow): Promise<WordPackRow>;
   getWordPack(id: string): Promise<WordPackRow | null>;
+
+  addClueToBank(row: ClueBankRow): Promise<void>;
+  listBankClues(word: string, limit: number): Promise<ClueBankRow[]>;
+  upvoteClue(id: string): Promise<void>;
 }

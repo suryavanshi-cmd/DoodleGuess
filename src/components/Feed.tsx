@@ -5,12 +5,14 @@ import type { FeedEntry } from "@/lib/game/types";
 
 export type FeedTab = "guesses" | "chat";
 
-const GUESS_KINDS = new Set(["guess", "correct", "close", "system", "join", "leave"]);
+const GUESS_KINDS = new Set(["guess", "correct", "close", "synonym", "system", "join", "leave"]);
 
 function entryClass(entry: FeedEntry): string {
   switch (entry.kind) {
     case "correct": return "bg-success/15 text-success font-semibold";
     case "close": return "bg-warning/15 text-warning font-semibold";
+    // "Very close" — a listed synonym. Softer than a win, warmer than a miss.
+    case "synonym": return "bg-accent/15 text-warning font-semibold ring-1 ring-warning/30";
     case "system": return "text-muted italic";
     case "join": case "leave": return "text-muted";
     default: return "";

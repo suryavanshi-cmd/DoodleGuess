@@ -11,6 +11,11 @@ import { DEFAULT_AVATAR, saveProfile, saveSession, useStoredProfile } from "@/li
 import { DEFAULT_SETTINGS, type RoomSettings } from "@/lib/game/settings";
 import type { Avatar } from "@/lib/game/types";
 
+const MODE_CARDS: { id: "draw" | "text_clue"; label: string; icon: string; hint: string }[] = [
+  { id: "draw", label: "Draw it", icon: "🎨", hint: "Sketch it on the canvas" },
+  { id: "text_clue", label: "Clue it", icon: "💬", hint: "One cryptic sentence" },
+];
+
 export function Landing() {
   const router = useRouter();
   const storedProfile = useStoredProfile();
@@ -61,19 +66,19 @@ export function Landing() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-10">
-      <header className="mb-8 flex items-center justify-between gap-3">
+    <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center px-4 py-5">
+      <header className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-            Doodle<span className="text-brand">Guess</span>
+          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
+            <span className="text-gradient">Doodle</span>Guess
           </h1>
-          <p className="text-muted">Draw it. Guess it. Laugh about it.</p>
+          <p className="mt-0.5 text-muted">Draw it, or clue it. Then watch everyone flail.</p>
         </div>
         <ThemeToggle />
       </header>
 
       {!realtimeEnabled() || (missingVars && missingVars.length > 0) ? (
-        <div className="mb-5 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+        <div className="mb-4 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
           <strong>Local mode.</strong> Rooms live in this server&apos;s memory, so they vanish between
           requests and cannot be shared across devices.
           {missingVars && missingVars.length > 0 ? (
@@ -83,91 +88,112 @@ export function Landing() {
                 {missingVars.map((name) => <li key={name}>{name}</li>)}
               </ul>
               <span className="mt-1 block">
-                Add them in your host&apos;s environment settings, then redeploy <em>without</em> the build cache
-                — <code>NEXT_PUBLIC_*</code> values are baked in at build time.
+                Add them in your host&apos;s environment settings, then redeploy <em>without</em> the build
+                cache — <code>NEXT_PUBLIC_*</code> values are baked in at build time.
               </span>
             </>
-          ) : (
-            <span className="mt-1 block">
-              The server has its keys but this page was built without the <code>NEXT_PUBLIC_*</code> ones.
-              Redeploy without the build cache.
-            </span>
-          )}
+          ) : null}
         </div>
       ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
-        <section className="card p-5">
-          <h2 className="text-xl font-bold">Start a room</h2>
-          <p className="mt-1 text-sm text-muted">
-            You get a 6-character code to share. Up to 16 players per room.
-          </p>
+      <div className="grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
+        <section className="card p-4 sm:p-5">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {MODE_CARDS.map((mode) => (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => setSettings({ ...settings, gameMode: mode.id })}
+                aria-pressed={settings.gameMode === mode.id}
+                className={`flex items-center gap-3 rounded-2xl border-2 p-3 text-left transition
+                  ${settings.gameMode === mode.id
+                    ? "border-brand bg-brand/10 shadow-sm"
+                    : "border-line bg-surface-2 hover:border-brand/40"}`}
+              >
+                <span className="text-3xl" aria-hidden>{mode.icon}</span>
+                <span>
+                  <span className="block font-bold">{mode.label}</span>
+                  <span className="block text-xs text-muted">{mode.hint}</span>
+                </span>
+              </button>
+            ))}
+          </div>
 
-          <div className="mt-4 space-y-4">
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <div>
               <label className="label" htmlFor="name">Your nickname</label>
               <input
-                id="name" className="input mt-1.5" value={name} maxLength={16}
+                id="name" className="input mt-1" value={name} maxLength={16}
                 placeholder="e.g. Pixel" onChange={(e) => setDraftName(e.target.value)}
               />
             </div>
-            <AvatarPicker value={avatar} onChange={setDraftAvatar} />
-
-            <button type="button" className="text-sm font-semibold text-brand" onClick={() => setShowSettings((s) => !s)}>
-              {showSettings ? "Hide game settings" : "Game settings"} ({settings.rounds} rounds · {settings.turnSeconds}s · {settings.pack})
-            </button>
-            {showSettings ? <SettingsForm settings={settings} onChange={setSettings} /> : null}
-
-            <button type="button" className="btn-primary w-full text-lg" disabled={busy || name.trim().length < 2} onClick={create}>
+            <button
+              type="button" className="btn-primary text-lg sm:px-8"
+              disabled={busy || name.trim().length < 2} onClick={create}
+            >
               {busy ? "Creating…" : "Create room"}
             </button>
           </div>
+
+          <div className="mt-3">
+            <AvatarPicker value={avatar} onChange={setDraftAvatar} />
+          </div>
+
+          <button
+            type="button"
+            className="mt-3 text-sm font-semibold text-brand"
+            onClick={() => setShowSettings((current) => !current)}
+          >
+            {showSettings ? "Hide game settings" : "Game settings"} · {settings.rounds} rounds · {settings.turnSeconds}s · {settings.pack}
+          </button>
+          {showSettings ? (
+            <div className="mt-3 border-t border-line pt-3">
+              <SettingsForm settings={settings} onChange={setSettings} />
+            </div>
+          ) : null}
         </section>
 
-        <div className="space-y-5">
-          <section className="card p-5">
-            <h2 className="text-xl font-bold">Join a room</h2>
-            <div className="mt-3 flex gap-2">
+        <div className="flex flex-col gap-4">
+          <section className="card p-4 sm:p-5">
+            <h2 className="text-lg font-bold">Join a room</h2>
+            <div className="mt-2 flex gap-2">
               <input
-                className="input font-mono text-lg tracking-[0.3em] uppercase"
+                className="input font-mono text-lg uppercase tracking-[0.3em]"
                 value={joinCode} maxLength={6} placeholder="CODE"
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 onKeyDown={(e) => { if (e.key === "Enter") join(joinCode); }}
               />
-              <button type="button" className="btn-primary" onClick={() => join(joinCode)}>Join</button>
+              <button type="button" className="btn-primary px-6" onClick={() => join(joinCode)}>Join</button>
             </div>
             {error ? <p className="mt-2 text-sm font-medium text-danger">{error}</p> : null}
 
             {rooms.length ? (
-              <div className="mt-4">
-                <span className="label">Public rooms</span>
-                <ul className="mt-1.5 space-y-1.5">
-                  {rooms.map((room) => (
-                    <li key={room.code}>
-                      <button
-                        type="button" onClick={() => join(room.code)}
-                        className="flex w-full items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-left"
-                      >
-                        <span className="font-mono font-bold tracking-widest">{room.code}</span>
-                        <span className="text-sm text-muted">{room.players} playing · {room.status}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <ul className="mt-3 space-y-1.5">
+                {rooms.map((room) => (
+                  <li key={room.code}>
+                    <button
+                      type="button" onClick={() => join(room.code)}
+                      className="flex w-full items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-left"
+                    >
+                      <span className="font-mono font-bold tracking-widest">{room.code}</span>
+                      <span className="text-sm text-muted">{room.players} playing · {room.status}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             ) : null}
           </section>
 
-          <section className="card p-5">
-            <h2 className="text-lg font-bold">What&apos;s different here</h2>
-            <ul className="mt-2 space-y-2 text-sm text-muted">
-              <li>✏️ <strong className="text-fg">Real drawing tools</strong> — shapes, fill bucket, undo/redo.</li>
-              <li>🎯 <strong className="text-fg">Typos still count</strong> — &ldquo;elefant&rdquo; gets the point, &ldquo;almost!&rdquo; is private.</li>
-              <li>🔐 <strong className="text-fg">No peeking</strong> — the word never leaves the server for guessers.</li>
-              <li>🎬 <strong className="text-fg">Replay + recap</strong> — watch the drawing again, see who was fastest.</li>
+          <section className="card p-4 sm:p-5">
+            <h2 className="text-lg font-bold">Why it plays better</h2>
+            <ul className="mt-2 grid gap-2 text-sm text-muted sm:grid-cols-2 lg:grid-cols-1">
+              <li>🎯 <strong className="text-fg">Typos still count</strong> — “elefant” scores; “almost!” stays private.</li>
+              <li>💬 <strong className="text-fg">Clue mode</strong> — no canvas, just one sly sentence.</li>
+              <li>🔐 <strong className="text-fg">No peeking</strong> — the word never leaves the server.</li>
+              <li>🎬 <strong className="text-fg">Replay & recap</strong> — MVP artist, fastest guesser.</li>
             </ul>
             <p className="mt-3 text-xs text-muted">
-              We keep your nickname, avatar and score for the session only. No ads, no tracking, no accounts.
+              Nickname, avatar and score for the session only. No ads, no tracking, no accounts.
             </p>
           </section>
         </div>

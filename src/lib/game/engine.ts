@@ -4,17 +4,20 @@ import type {
   FeedRow, GuessRow, PlayerRow, RoomRow, RoundRow, RoundSecretRow, StrokeRow,
 } from "@/lib/store/types";
 import { evaluateGuess } from "./fuzzy";
+import { validateClue } from "./clues";
+import { bankCluesFor } from "./clueBank";
+import { isSynonym } from "./synonyms";
 import { maskWord, revealTimeline, revealedAt, wordShape } from "./mask";
 import { screenMessage, sanitizeName } from "./filter";
 import {
   BASE_POINTS, POWER_UP_COSTS, accuracyPct, canAfford, computeRecap, drawerPoints, guesserPoints,
-  nextStreak, spendPoints, type Difficulty, type PowerUpKind,
+  nextStreak, spendPoints, synonymPoints, type Difficulty, type PowerUpKind,
 } from "./scoring";
 import { DEFAULT_SETTINGS, TIMING, normalizeSettings } from "./settings";
 import { mulberry32, seedFrom } from "./text";
 import { builtinPack, drawWordChoices, entriesFromCustomWords, rotateCategories, type WordEntry } from "./words";
 import type {
-  Avatar, FeedEntry, PublicPlayer, PublicRound, PublicState, Recap, Stroke, TurnResult,
+  Avatar, FeedEntry, MatchType, PublicPlayer, PublicRound, PublicState, Recap, Stroke, TurnResult,
 } from "./types";
 
 export class GameError extends Error {
@@ -312,6 +315,8 @@ export class GameEngine {
       ends_at: null,
       ended_at: null,
       revealed_word: null,
+      clue_text: null,
+      clue_source: null,
       created_at: iso(nowMs),
     };
     await this.store.createRound(round);
@@ -366,31 +371,118 @@ export class GameEngine {
     choice: { word: string; difficulty: Difficulty },
   ): Promise<void> {
     const nowMs = this.now();
-    const endsAt = nowMs + room.settings.turnSeconds * 1000;
+    const textMode = room.settings.gameMode === "text_clue";
     const timeline = revealTimeline(choice.word, room.settings.turnSeconds, {
       hintsEnabled: room.settings.hintsEnabled,
       seed: round.id,
     });
 
+    // In text mode the clock does not start until the clue is written: the
+    // guessers have nothing to work from until then.
+    const clueDeadline = nowMs + TIMING.clueSeconds * 1000;
+    const endsAt = nowMs + room.settings.turnSeconds * 1000;
+
     const started = await this.store.updateRound(round.id, {
-      status: "drawing",
+      status: textMode ? "clue" : "drawing",
       difficulty: choice.difficulty,
       word_length: choice.word.length,
       shape: wordShape(choice.word),
-      started_at: iso(nowMs),
-      ends_at: iso(endsAt),
+      started_at: textMode ? null : iso(nowMs),
+      ends_at: textMode ? null : iso(endsAt),
     }, { status: "picking" });
     if (!started) return; // someone else already started this turn
 
     await this.store.updateSecret(round.id, { word: choice.word, reveal_timeline: timeline });
     await this.store.updateRoom(room.id, {
-      status: "drawing",
-      phase_ends_at: iso(endsAt),
+      status: textMode ? "clue" : "drawing",
+      phase_ends_at: iso(textMode ? clueDeadline : endsAt),
       used_words: [...room.used_words, choice.word],
       last_activity_at: iso(nowMs),
     });
-    await this.pushFeed(room, { kind: "system", text: `Drawing has started — ${choice.difficulty} word, ${choice.word.replace(/[^\s]/g, "•")}` });
+    await this.pushFeed(room, {
+      kind: "system",
+      text: textMode
+        ? `${choice.difficulty} word chosen — the Clue-Giver is writing their clue…`
+        : `Drawing has started — ${choice.difficulty} word, ${choice.word.replace(/[^\s]/g, "•")}`,
+    });
     await this.broadcastState(room.code);
+  }
+
+  /** Text mode: the Clue-Giver submits their clue and the guessing clock starts. */
+  async submitClue(roundId: string, auth: AuthInput, text: string): Promise<void> {
+    const round = await this.store.getRound(roundId);
+    if (!round) throw new GameError("Round not found.", 404, "no_round");
+    const room = await this.requireRoomById(round.room_id);
+    const { player } = await this.authenticate(room.code, auth);
+    if (round.drawer_id !== player.id) throw new GameError("Only the Clue-Giver writes the clue.", 403, "not_drawer");
+    if (round.status !== "clue") throw new GameError("The clue was already sent.", 409, "already_started");
+
+    const secret = await this.store.getSecret(round.id);
+    if (!secret?.word) throw new GameError("The word is not ready yet.", 409, "no_word");
+
+    // Every rule here is local string work — no model call, no per-clue cost.
+    const check = validateClue(text, secret.word);
+    if (!check.ok) throw new GameError(check.message, 400, `clue_${check.reason}`);
+
+    await this.openGuessing(room, round, check.cleaned, "human");
+  }
+
+  /** Shared by a written clue and the clue-bank fallback. */
+  private async openGuessing(
+    room: RoomRow,
+    round: RoundRow,
+    clueText: string,
+    source: "human" | "clue_bank",
+  ): Promise<void> {
+    const nowMs = this.now();
+    const endsAt = nowMs + room.settings.turnSeconds * 1000;
+    const started = await this.store.updateRound(round.id, {
+      status: "drawing",
+      clue_text: clueText,
+      clue_source: source,
+      started_at: iso(nowMs),
+      ends_at: iso(endsAt),
+    }, { status: "clue" });
+    if (!started) return;
+
+    await this.store.updateRoom(room.id, {
+      status: "drawing",
+      phase_ends_at: iso(endsAt),
+      last_activity_at: iso(nowMs),
+    });
+    await this.pushFeed(room, {
+      kind: "system",
+      text: source === "human" ? "The clue is in — start guessing!" : "Out of time, so here's a clue from the bank.",
+    });
+    await this.broadcastState(room.code);
+  }
+
+  /**
+   * "Need inspiration?" — a lookup in the bundled bank plus any clues players
+   * have contributed for this word. Never a generated response.
+   */
+  async clueSuggestions(roundId: string, auth: AuthInput): Promise<{ clues: string[] }> {
+    const round = await this.store.getRound(roundId);
+    if (!round) throw new GameError("Round not found.", 404, "no_round");
+    const room = await this.requireRoomById(round.room_id);
+    const { player } = await this.authenticate(room.code, auth);
+    if (round.drawer_id !== player.id) throw new GameError("Only the Clue-Giver can do that.", 403, "not_drawer");
+    const secret = await this.store.getSecret(round.id);
+    if (!secret?.word) throw new GameError("The word is not ready yet.", 409, "no_word");
+    return { clues: await this.bankClues(secret.word) };
+  }
+
+  private async bankClues(word: string): Promise<string[]> {
+    const contributed = await this.store.listBankClues(word.toLowerCase().trim(), 5)
+      .then((rows) => rows.map((row) => row.clue_text))
+      .catch(() => [] as string[]);
+    const bundled = bankCluesFor(word);
+    return [...new Set([...contributed, ...bundled])];
+  }
+
+  async upvoteClue(code: string, auth: AuthInput, clueId: string): Promise<void> {
+    await this.authenticate(code, auth);
+    await this.store.upvoteClue(clueId);
   }
 
   /**
@@ -414,6 +506,18 @@ export class GameEngine {
         const choice = secret.choices[1] ?? secret.choices[0];
         if (choice) await this.startDrawing(room, round, secret, choice);
       }
+      return;
+    }
+
+    if (room.status === "clue" && room.current_round_id) {
+      const round = await this.store.getRound(room.current_round_id);
+      const secret = round ? await this.store.getSecret(round.id) : null;
+      if (!round || !secret) return;
+      // The Clue-Giver ran out of time: fall back to the bundled bank, or end
+      // the turn if this word has no clue on file (a custom pack, say).
+      const suggestions = await this.bankClues(secret.word);
+      if (suggestions.length) await this.openGuessing(room, round, suggestions[0], "clue_bank");
+      else await this.endTurn(room, round, "time");
       return;
     }
 
@@ -451,7 +555,7 @@ export class GameEngine {
       status: "ended",
       ended_at: iso(nowMs),
       revealed_word: word,
-    }, { status: "drawing" });
+    }, { status: round.status });
     if (!ended) return; // another request already closed this turn
 
     const players = await this.store.listPlayers(room.id);
@@ -500,7 +604,28 @@ export class GameEngine {
     }));
     scores.sort((a, b) => b.gained - a.gained);
 
-    const lastTurn: TurnResult = { word, drawerId: round.drawer_id, scores };
+    const lastTurn: TurnResult = {
+      word,
+      drawerId: round.drawer_id,
+      scores,
+      clueText: round.clue_text,
+      clueSource: round.clue_source,
+      matches: guesses
+        .filter((g) => g.is_correct)
+        .map((g) => ({ playerId: g.player_id, matchType: g.match_type })),
+    };
+
+    // A human clue that actually worked earns its place in the bank, so the
+    // pool grows from real play rather than being generated.
+    if (round.clue_source === "human" && round.clue_text && correct.length > 0) {
+      await this.store.addClueToBank({
+        id: randomUUID(),
+        word: word.toLowerCase().trim(),
+        clue_text: round.clue_text,
+        upvotes: 0,
+        created_at: iso(nowMs),
+      }).catch(() => undefined);
+    }
     await this.store.updateRoom(room.id, {
       status: "intermission",
       phase_ends_at: iso(nowMs + TIMING.intermissionSeconds * 1000),
@@ -598,6 +723,15 @@ export class GameEngine {
     if (!trimmed) throw new GameError("Type a guess first.", 400, "empty");
 
     const evaluation = evaluateGuess(trimmed, secret.word);
+    // Synonyms count only in text mode, where you are guessing from a
+    // description rather than a picture. Pure local lookup, no service call.
+    const synonymHit = room.settings.gameMode === "text_clue"
+      && evaluation.verdict !== "correct"
+      && isSynonym(trimmed, secret.word);
+    const matchType: MatchType = evaluation.verdict === "correct"
+      ? (evaluation.distance === 0 ? "exact" : "fuzzy")
+      : synonymHit ? "synonym" : "miss";
+    const isCorrect = matchType !== "miss";
     const nowMs = this.now();
     const startedAt = round.started_at ? Date.parse(round.started_at) : nowMs;
     const msElapsed = Math.max(0, nowMs - startedAt);
@@ -605,14 +739,15 @@ export class GameEngine {
     const timeLeftRatio = Math.max(0, Math.min(1, 1 - msElapsed / turnMs));
 
     let points = 0;
-    if (evaluation.verdict === "correct") {
-      points = guesserPoints({
+    if (isCorrect) {
+      const full = guesserPoints({
         difficulty: round.difficulty ?? "medium",
         timeLeftRatio,
         correctRank: guesses.filter((g) => g.is_correct).length + 1,
         priorStreak: player.streak,
         doublePoints: round.double_points,
       });
+      points = matchType === "synonym" ? synonymPoints(full) : full;
     }
 
     const guessRow: GuessRow = {
@@ -621,8 +756,9 @@ export class GameEngine {
       room_id: room.id,
       player_id: player.id,
       guess_text: trimmed,
-      is_correct: evaluation.verdict === "correct",
-      is_close: evaluation.verdict === "close",
+      is_correct: isCorrect,
+      is_close: evaluation.verdict === "close" && !synonymHit,
+      match_type: matchType,
       points_awarded: points,
       ms_elapsed: msElapsed,
       guessed_at: iso(nowMs),
@@ -630,18 +766,20 @@ export class GameEngine {
     await this.store.insertGuess(guessRow);
     await this.store.updatePlayer(player.id, {
       guesses_made: player.guesses_made + 1,
-      correct_guesses: player.correct_guesses + (evaluation.verdict === "correct" ? 1 : 0),
-      total_guess_ms: player.total_guess_ms + (evaluation.verdict === "correct" ? msElapsed : 0),
+      correct_guesses: player.correct_guesses + (isCorrect ? 1 : 0),
+      total_guess_ms: player.total_guess_ms + (isCorrect ? msElapsed : 0),
       score: player.score + points,
       last_seen_at: iso(nowMs),
     });
 
-    if (evaluation.verdict === "correct") {
+    if (isCorrect) {
       await this.pushFeed(room, {
-        kind: "correct",
+        kind: matchType === "synonym" ? "synonym" : "correct",
         playerId: player.id,
         name: player.name,
-        text: `${player.name} guessed it! (+${points})`,
+        text: matchType === "synonym"
+          ? `${player.name} was very close — a synonym! (+${points})`
+          : `${player.name} guessed it! (+${points})`,
       });
       await this.broadcastState(room.code);
       await this.maybeEndEarly((await this.store.getRoomById(room.id)) ?? room);
@@ -820,6 +958,10 @@ export class GameEngine {
         endsAt: round.ends_at,
         doublePoints: round.double_points,
         revealedWord: ended ? round.revealed_word : null,
+        // The clue is public the moment guessing opens, and stays visible in
+        // the summary. While it is being written there is nothing to show.
+        clueText: round.status === "drawing" || ended ? round.clue_text : null,
+        clueSource: round.status === "drawing" || ended ? round.clue_source : null,
       };
     }
 

@@ -20,6 +20,19 @@ const FALLBACK_POLL_MS = 1_000;
 const STROKE_POLL_MS = 900;
 const FREEZE_MS = 5_000;
 
+/**
+ * Snapshots race: a poll issued before an action completes can land after it.
+ * Returns true when this snapshot is older than one already applied, and
+ * records it otherwise.
+ */
+function isStale(next: PublicState, last: { current: number }): boolean {
+  const at = Date.parse(next.serverTime);
+  if (!Number.isFinite(at)) return false;
+  if (at < last.current) return true;
+  last.current = at;
+  return false;
+}
+
 function mergeFeed(previous: FeedEntry[], incoming: FeedEntry[]): FeedEntry[] {
   const byId = new Map(previous.map((entry) => [entry.id, entry]));
   for (const entry of incoming) byId.set(entry.id, entry);
@@ -42,6 +55,8 @@ export function useRoom(code: string) {
   const sessionRef = useRef<Session | null>(storedSession);
   const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const roundIdRef = useRef<string | null>(null);
+  /** Server clock of the newest snapshot applied, to drop out-of-order ones. */
+  const lastSnapshotRef = useRef(0);
 
   useEffect(() => {
     sessionRef.current = storedSession;
@@ -65,8 +80,10 @@ export function useRoom(code: string) {
   const refresh = useCallback(async () => {
     try {
       const next = await api.state(code, sessionRef.current ?? readSession(code));
-      setState(next);
-      setFeed((previous) => mergeFeed(previous, next.feed));
+      if (!isStale(next, lastSnapshotRef)) {
+        setState(next);
+        setFeed((previous) => mergeFeed(previous, next.feed));
+      }
       return next;
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
@@ -89,11 +106,14 @@ export function useRoom(code: string) {
     const meId = sessionRef.current?.playerId ?? null;
     switch (event.type) {
       case "state":
-        setState((previous) => (previous
-          // The broadcast payload never carries the drawer's word: keep ours.
-          ? { ...event.state, yourWord: previous.yourWord, yourChoices: previous.yourChoices }
-          : event.state));
-        setFeed((previous) => mergeFeed(previous, event.state.feed));
+        if (!isStale(event.state, lastSnapshotRef)) {
+          setState((previous) => (previous
+            // A broadcast is built for the whole room, so it never carries the
+            // drawer's own word: keep what we already know.
+            ? { ...event.state, yourWord: previous.yourWord, yourChoices: previous.yourChoices }
+            : event.state));
+          setFeed((previous) => mergeFeed(previous, event.state.feed));
+        }
         scheduleRefresh();
         break;
       case "feed":
@@ -205,12 +225,21 @@ export function useRoom(code: string) {
       .then(() => { void refresh(); }),
     choose: (roundId: string, index: number) => withSession((s) => api.choose(code, s, roundId, index))()
       .then((next) => {
-        if (next) {
+        if (next && !isStale(next, lastSnapshotRef)) {
           setState(next);
           setFeed((previous) => mergeFeed(previous, next.feed));
         }
       }),
     guess: (text: string) => withSession((s) => api.guess(code, s, text))(),
+    submitClue: (roundId: string, text: string) =>
+      withSession((s) => api.clue(code, s, roundId, text))().then((next) => {
+        if (next && !isStale(next, lastSnapshotRef)) {
+          setState(next);
+          setFeed((previous) => mergeFeed(previous, next.feed));
+        }
+        return next;
+      }),
+    clueSuggestions: (roundId: string) => withSession((s) => api.clueSuggestions(code, s, roundId))(),
     chat: (text: string) => withSession((s) => api.chat(code, s, text))().then(() => { void refresh(); }),
     powerUp: (kind: "hint" | "freeze", targetId?: string) =>
       withSession((s) => api.powerUp(code, s, kind, targetId))().then((result) => {

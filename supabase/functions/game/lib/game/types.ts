@@ -4,8 +4,8 @@
 import type { Difficulty } from "./scoring.ts";
 import type { RoomSettings } from "./settings.ts";
 
-export type RoomStatus = "lobby" | "picking" | "drawing" | "intermission" | "finished";
-export type RoundStatus = "picking" | "drawing" | "ended";
+export type RoomStatus = "lobby" | "picking" | "clue" | "drawing" | "intermission" | "finished";
+export type RoundStatus = "picking" | "clue" | "drawing" | "ended";
 
 export interface Avatar {
   emoji: string;
@@ -39,9 +39,12 @@ export interface PublicRound {
   doublePoints: boolean;
 
   revealedWord: string | null;
+
+  clueText: string | null;
+  clueSource: "human" | "clue_bank" | null;
 }
 
-export type FeedKind = "guess" | "chat" | "system" | "correct" | "close" | "join" | "leave";
+export type FeedKind = "guess" | "chat" | "system" | "correct" | "close" | "synonym" | "join" | "leave";
 
 export interface FeedEntry {
   id: string;
@@ -54,9 +57,16 @@ export interface FeedEntry {
   privateTo?: string | null;
 }
 
+export type MatchType = "exact" | "fuzzy" | "synonym" | "miss";
+
 export interface TurnResult {
   word: string;
   drawerId: string | null;
+
+  clueText?: string | null;
+  clueSource?: "human" | "clue_bank" | null;
+
+  matches?: { playerId: string; matchType: MatchType }[];
   scores: { playerId: string; gained: number; total: number }[];
 }
 

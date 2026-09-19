@@ -120,6 +120,20 @@ async function route(request: Request): Promise<unknown> {
         // Return the new state so the drawer can draw at once.
         return game.publicState(code, auth.playerId ?? null);
       }
+      case "clue": {
+        const input = await body<{ roundId: string; text: string }>(request);
+        await game.submitClue(input.roundId, auth, String(input.text ?? ""));
+        return game.publicState(code, auth.playerId ?? null);
+      }
+      case "clue-suggestion": {
+        const input = await body<{ roundId: string }>(request);
+        return game.clueSuggestions(input.roundId, auth);
+      }
+      case "clue-vote": {
+        const input = await body<{ clueId: string }>(request);
+        await game.upvoteClue(code, auth, String(input.clueId ?? ""));
+        return { voted: true };
+      }
       case "guess": {
         const input = await body<{ text: string }>(request);
         return game.submitGuess(code, auth, String(input.text ?? ""));

@@ -70,6 +70,16 @@ export const api = {
       method: "POST", session, body: JSON.stringify({ roundId, index }),
     }),
 
+  clue: (code: string, session: Session, roundId: string, text: string) =>
+    request<import("@/lib/game/types").PublicState>(`/api/rooms/${code}/clue`, {
+      method: "POST", session, body: JSON.stringify({ roundId, text }),
+    }),
+
+  clueSuggestions: (code: string, session: Session, roundId: string) =>
+    request<{ clues: string[] }>(`/api/rooms/${code}/clue-suggestion`, {
+      method: "POST", session, body: JSON.stringify({ roundId }),
+    }),
+
   guess: (code: string, session: Session, text: string) =>
     request<{ verdict: "correct" | "close" | "wrong" | "duplicate" }>(`/api/rooms/${code}/guess`, {
       method: "POST", session, body: JSON.stringify({ text }),

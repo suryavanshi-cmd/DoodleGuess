@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Canvas } from "./Canvas";
+import { ClueBoard } from "./ClueBoard";
 import { Confetti } from "./Confetti";
 import { Feed, type FeedTab } from "./Feed";
 import { PlayerList } from "./PlayerList";
@@ -36,6 +37,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
   }, [feed, me?.id]);
 
   const round = state?.round ?? null;
+  const textMode = state?.settings.gameMode === "text_clue";
   const iGuessedIt = Boolean(me?.guessedCorrect);
   const canGuess = Boolean(state?.status === "drawing" && !isDrawer && !iGuessedIt && !frozen);
 
@@ -52,7 +54,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
     : iGuessedIt
       ? "You got it! Sit tight while the others guess."
       : isDrawer
-        ? "You're drawing this turn."
+        ? (textMode ? "You're giving the clue this turn." : "You're drawing this turn.")
         : hint;
 
   const canBuyHint = Boolean(
@@ -84,7 +86,9 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
               ? `${state.players.find((p) => p.id === round?.drawerId)?.name ?? "Someone"} is choosing a word…`
               : round?.status === "ended"
                 ? "That was the word"
-                : isDrawer ? "Draw this!" : round?.shape.length ? `${round.shape.join(" + ")} letters` : ""}
+                : isDrawer
+                  ? (textMode ? "Write a clue for this!" : "Draw this!")
+                  : round?.shape.length ? `${round.shape.join(" + ")} letters` : ""}
           </p>
         </div>
 
@@ -104,12 +108,22 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-3">
           <div className="relative">
-            <Canvas
-              strokes={strokes}
-              canDraw={isDrawer && state.status === "drawing"}
-              onStroke={room.pushStroke}
-              onCanvas={room.pushCanvas}
-            />
+            {textMode && round ? (
+              <ClueBoard
+                round={round}
+                isGiver={isDrawer}
+                secretWord={state.yourWord ?? null}
+                onSubmit={(value) => actions.submitClue(round.id, value)}
+                onSuggest={() => actions.clueSuggestions(round.id)}
+              />
+            ) : (
+              <Canvas
+                strokes={strokes}
+                canDraw={isDrawer && state.status === "drawing"}
+                onStroke={room.pushStroke}
+                onCanvas={room.pushCanvas}
+              />
+            )}
             <ReactionOverlay reactions={reactions} />
             <Confetti trigger={celebrations} />
 
@@ -122,16 +136,35 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
                 <div className="animate-pop-in card max-h-full w-full max-w-md overflow-y-auto p-4">
                   <p className="text-center text-sm text-muted">The word was</p>
                   <p className="text-center text-2xl font-black">{state.lastTurn.word}</p>
-                  <div className="mt-3"><Replay key={round?.id ?? "replay"} strokes={strokes} /></div>
+                  {textMode ? (
+                    <p className="mt-3 rounded-xl border border-line bg-surface-2 px-3 py-2 text-center text-sm">
+                      <span className="block text-xs text-muted">
+                        {state.lastTurn.clueSource === "clue_bank" ? "Clue from the bank" : "Their clue"}
+                      </span>
+                      “{state.lastTurn.clueText}”
+                    </p>
+                  ) : (
+                    <div className="mt-3"><Replay key={round?.id ?? "replay"} strokes={strokes} /></div>
+                  )}
                   <ul className="mt-3 space-y-1 text-sm">
                     {state.lastTurn.scores.length === 0 ? (
                       <li className="text-center text-muted">Nobody got that one!</li>
-                    ) : state.lastTurn.scores.map((score) => (
-                      <li key={score.playerId} className="flex justify-between">
-                        <span>{state.players.find((p) => p.id === score.playerId)?.name ?? "Player"}</span>
-                        <span className="font-semibold text-success">+{score.gained}</span>
-                      </li>
-                    ))}
+                    ) : state.lastTurn.scores.map((score) => {
+                      const match = state.lastTurn?.matches?.find((m) => m.playerId === score.playerId);
+                      return (
+                        <li key={score.playerId} className="flex items-center justify-between gap-2">
+                          <span className="truncate">
+                            {state.players.find((p) => p.id === score.playerId)?.name ?? "Player"}
+                            {match?.matchType === "synonym" ? (
+                              <span className="ml-1.5 text-xs font-semibold text-warning">synonym</span>
+                            ) : match?.matchType === "fuzzy" ? (
+                              <span className="ml-1.5 text-xs font-semibold text-muted">near spelling</span>
+                            ) : null}
+                          </span>
+                          <span className="font-semibold text-success">+{score.gained}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                   <p className="mt-3 text-center text-xs text-muted">Next turn starts automatically.</p>
                 </div>

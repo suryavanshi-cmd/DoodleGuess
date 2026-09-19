@@ -5,33 +5,40 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-  --bg: #f6f4ff;
-  --bg-accent: #ede9fe;
+  --bg: #fff7f5;
+  --bg-glow-a: #ffd9d4;
+  --bg-glow-b: #ffe9cf;
   --surface: #ffffff;
-  --surface-2: #f8fafc;
-  --border: #e2e8f0;
-  --fg: #0f172a;
-  --fg-muted: #64748b;
-  --brand: #7c3aed;
+  --surface-2: #fff1ee;
+  --border: #f3d3cd;
+  --fg: #2a0d0a;
+  --fg-muted: #8a5a53;
+  /* Darker than a pure red so white label text clears AA on buttons. */
+  --brand: #c81e1e;
+  --brand-strong: #9f1616;
   --brand-fg: #ffffff;
-  --success: #16a34a;
-  --warning: #f59e0b;
-  --danger: #dc2626;
+  --accent: #f97316;
+  --success: #15803d;
+  --warning: #b45309;
+  --danger: #b91c1c;
 }
 
 [data-theme="dark"] {
-  --bg: #0b1020;
-  --bg-accent: #141a32;
-  --surface: #151b30;
-  --surface-2: #1c2440;
-  --border: #2a3454;
-  --fg: #e8ecf8;
-  --fg-muted: #93a0c0;
-  --brand: #a78bfa;
-  --brand-fg: #14102a;
+  --bg: #16070a;
+  --bg-glow-a: #48111a;
+  --bg-glow-b: #2b0d14;
+  --surface: #230d12;
+  --surface-2: #2f1219;
+  --border: #4a1f26;
+  --fg: #ffeceb;
+  --fg-muted: #d3a09b;
+  --brand: #ff5a5a;
+  --brand-strong: #ff7a6b;
+  --brand-fg: #2a0508;
+  --accent: #fbbf24;
   --success: #4ade80;
   --warning: #fbbf24;
-  --danger: #f87171;
+  --danger: #ff6b6b;
 }
 
 @theme inline {
@@ -43,7 +50,9 @@
   --color-fg: var(--fg);
   --color-muted: var(--fg-muted);
   --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
   --color-brand-fg: var(--brand-fg);
+  --color-accent: var(--accent);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -57,7 +66,13 @@ html, body {
 
 body {
   min-height: 100dvh;
-  background-image: radial-gradient(60rem 40rem at 110% -10%, var(--bg-accent), transparent 60%);
+  /* Layered warm glows rather than a flat red wash: keeps large areas of red
+     from fighting the content for attention. */
+  background-image:
+    radial-gradient(48rem 32rem at 12% -8%, var(--bg-glow-a), transparent 62%),
+    radial-gradient(42rem 30rem at 105% 8%, var(--bg-glow-b), transparent 58%),
+    radial-gradient(38rem 28rem at 50% 118%, var(--bg-glow-a), transparent 60%);
+  background-attachment: fixed;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -72,8 +87,16 @@ body {
   .card {
     @apply rounded-2xl border border-line bg-surface shadow-sm;
   }
+  /* Headline treatment used for the wordmark and big moments. */
+  .text-gradient {
+    background-image: linear-gradient(120deg, var(--brand), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
   .btn-primary {
-    @apply btn bg-brand text-brand-fg hover:brightness-110;
+    @apply btn text-brand-fg shadow-sm hover:brightness-110;
+    background-image: linear-gradient(180deg, var(--brand), var(--brand-strong));
   }
   .btn-ghost {
     @apply btn border border-line bg-surface text-fg hover:bg-surface-2;

@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
-  FeedRow, GameStore, GuessRow, PlayerRow, RoomRow, RoundRow, RoundSecretRow, StrokeRow, WordPackRow,
+  ClueBankRow, FeedRow, GameStore, GuessRow, PlayerRow, RoomRow, RoundRow, RoundSecretRow, StrokeRow, WordPackRow,
 } from "./types";
 
 const TABLES = {
@@ -12,6 +12,7 @@ const TABLES = {
   feed: "feed_entries",
   strokes: "strokes",
   packs: "word_packs",
+  clueBank: "clue_bank",
 } as const;
 
 /**
@@ -185,5 +186,22 @@ export class SupabaseStore implements GameStore {
     const { data, error } = await this.db.from(TABLES.packs).select("*").eq("id", id).maybeSingle();
     if (error) throw new Error(`getWordPack: ${error.message}`);
     return (data as WordPackRow) ?? null;
+  }
+
+  async addClueToBank(row: ClueBankRow) {
+    // Duplicate clues for the same word are ignored rather than stacked.
+    const { error } = await this.db.from(TABLES.clueBank).upsert(row, { onConflict: "word,clue_text" });
+    if (error) throw new Error(`addClueToBank: ${error.message}`);
+  }
+  async listBankClues(word: string, limit: number) {
+    const { data, error } = await this.db
+      .from(TABLES.clueBank).select("*").eq("word", word)
+      .order("upvotes", { ascending: false }).limit(limit);
+    if (error) throw new Error(`listBankClues: ${error.message}`);
+    return (data ?? []) as ClueBankRow[];
+  }
+  async upvoteClue(id: string) {
+    const { error } = await this.db.rpc("upvote_clue", { p_clue_id: id });
+    if (error) throw new Error(`upvoteClue: ${error.message}`);
   }
 }

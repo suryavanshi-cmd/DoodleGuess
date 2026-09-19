@@ -3,7 +3,7 @@
 
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.116.0";
 import type {
-  FeedRow, GameStore, GuessRow, PlayerRow, RoomRow, RoundRow, RoundSecretRow, StrokeRow, WordPackRow,
+  ClueBankRow, FeedRow, GameStore, GuessRow, PlayerRow, RoomRow, RoundRow, RoundSecretRow, StrokeRow, WordPackRow,
 } from "./types.ts";
 
 const TABLES = {
@@ -15,6 +15,7 @@ const TABLES = {
   feed: "feed_entries",
   strokes: "strokes",
   packs: "word_packs",
+  clueBank: "clue_bank",
 } as const;
 
 export function createServiceClient(url: string, serviceKey: string): SupabaseClient {
@@ -184,5 +185,22 @@ export class SupabaseStore implements GameStore {
     const { data, error } = await this.db.from(TABLES.packs).select("*").eq("id", id).maybeSingle();
     if (error) throw new Error(`getWordPack: ${error.message}`);
     return (data as WordPackRow) ?? null;
+  }
+
+  async addClueToBank(row: ClueBankRow) {
+
+    const { error } = await this.db.from(TABLES.clueBank).upsert(row, { onConflict: "word,clue_text" });
+    if (error) throw new Error(`addClueToBank: ${error.message}`);
+  }
+  async listBankClues(word: string, limit: number) {
+    const { data, error } = await this.db
+      .from(TABLES.clueBank).select("*").eq("word", word)
+      .order("upvotes", { ascending: false }).limit(limit);
+    if (error) throw new Error(`listBankClues: ${error.message}`);
+    return (data ?? []) as ClueBankRow[];
+  }
+  async upvoteClue(id: string) {
+    const { error } = await this.db.rpc("upvote_clue", { p_clue_id: id });
+    if (error) throw new Error(`upvoteClue: ${error.message}`);
   }
 }

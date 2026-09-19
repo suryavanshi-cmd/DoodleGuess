@@ -1,6 +1,6 @@
 "use client";
 
-import { LIMITS, type RoomSettings } from "@/lib/game/settings";
+import { LIMITS, type GameMode, type RoomSettings } from "@/lib/game/settings";
 
 const PACKS: { id: RoomSettings["pack"]; label: string; hint: string }[] = [
   { id: "simple", label: "Simple", hint: "Animals, food, objects — great with kids" },
@@ -35,8 +35,34 @@ export function SettingsForm({ settings, disabled, onChange }: {
 }) {
   const patch = (next: Partial<RoomSettings>) => onChange({ ...settings, ...next });
 
+  const MODES: { id: GameMode; label: string; icon: string; hint: string }[] = [
+    { id: "draw", label: "Draw it", icon: "🎨", hint: "Sketch the word on the canvas" },
+    { id: "text_clue", label: "Clue it", icon: "💬", hint: "Write a cryptic clue — no drawing" },
+  ];
+
   return (
     <div className="space-y-4">
+      <div>
+        <span className="label">Game mode</span>
+        <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+          {MODES.map((mode) => (
+            <button
+              key={mode.id} type="button" disabled={disabled}
+              onClick={() => patch({ gameMode: mode.id })}
+              aria-pressed={settings.gameMode === mode.id}
+              className={`flex items-center gap-3 rounded-xl border p-3 text-left transition disabled:opacity-60
+                ${settings.gameMode === mode.id ? "border-brand bg-brand/10" : "border-line bg-surface-2"}`}
+            >
+              <span className="text-2xl" aria-hidden>{mode.icon}</span>
+              <span>
+                <span className="block font-semibold">{mode.label}</span>
+                <span className="block text-xs text-muted">{mode.hint}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="rounds">Rounds: <strong className="text-fg">{settings.rounds}</strong></label>

@@ -1,8 +1,8 @@
 import type { Difficulty } from "./scoring";
 import type { RoomSettings } from "./settings";
 
-export type RoomStatus = "lobby" | "picking" | "drawing" | "intermission" | "finished";
-export type RoundStatus = "picking" | "drawing" | "ended";
+export type RoomStatus = "lobby" | "picking" | "clue" | "drawing" | "intermission" | "finished";
+export type RoundStatus = "picking" | "clue" | "drawing" | "ended";
 
 export interface Avatar {
   emoji: string;
@@ -36,9 +36,12 @@ export interface PublicRound {
   doublePoints: boolean;
   /** Only ever non-null once the turn has ended. */
   revealedWord: string | null;
+  /** Text mode: the clue everyone is guessing from. Null while it is written. */
+  clueText: string | null;
+  clueSource: "human" | "clue_bank" | null;
 }
 
-export type FeedKind = "guess" | "chat" | "system" | "correct" | "close" | "join" | "leave";
+export type FeedKind = "guess" | "chat" | "system" | "correct" | "close" | "synonym" | "join" | "leave";
 
 export interface FeedEntry {
   id: string;
@@ -51,9 +54,16 @@ export interface FeedEntry {
   privateTo?: string | null;
 }
 
+export type MatchType = "exact" | "fuzzy" | "synonym" | "miss";
+
 export interface TurnResult {
   word: string;
   drawerId: string | null;
+  /** Text mode: what the clue was, so the summary can show it. */
+  clueText?: string | null;
+  clueSource?: "human" | "clue_bank" | null;
+  /** Text mode: how each correct guess was matched. */
+  matches?: { playerId: string; matchType: MatchType }[];
   scores: { playerId: string; gained: number; total: number }[];
 }
 
