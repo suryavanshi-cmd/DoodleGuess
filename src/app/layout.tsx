@@ -33,6 +33,7 @@ const themeScript = `
     var theme = stored || "dark";
     document.documentElement.setAttribute("data-theme", theme);
   } catch (e) {}
+  document.documentElement.classList.add("js");
 `;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

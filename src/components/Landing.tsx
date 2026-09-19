@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AvatarPicker } from "./AvatarPicker";
 import { SettingsForm } from "./SettingsForm";
@@ -79,9 +80,12 @@ export function Landing() {
     <main className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-start px-3 py-4 sm:justify-center sm:px-4 sm:py-5">
       <header className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-black tracking-tight sm:text-5xl">
-            <span className="text-gradient">Doodle</span>Guess
-          </h1>
+          {/* The wordmark is the way back to the front page. */}
+          <Link href="/" className="inline-block">
+            <h1 className="text-3xl font-black tracking-tight sm:text-5xl">
+              <span className="text-gradient">Doodle</span>Guess
+            </h1>
+          </Link>
           <p className="mt-0.5 text-sm text-muted sm:text-base">Draw it, or clue it. Then watch everyone flail.</p>
         </div>
         <ThemeToggle />
