@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError } from "./api";
-import { joinRoomChannel, realtimeEnabled, type RoomChannel } from "./realtime";
+import { joinRoomChannel, type RoomChannel } from "./realtime";
 import { clearSession, readSession, saveSession, useStoredSession, type Session } from "./storage";
 import type { Avatar, FeedEntry, PublicState, RealtimeEvent, Stroke } from "@/lib/game/types";
 
@@ -31,6 +31,22 @@ function isStale(next: PublicState, last: { current: number }): boolean {
   if (at < last.current) return true;
   last.current = at;
   return false;
+}
+
+/**
+ * A room-wide broadcast is built with no viewer, so every per-viewer field in
+ * it is null. Applying one as-is would blank the drawer's word or the host's
+ * approval prompt until the next authenticated fetch lands. Anything
+ * publicState fills in from the viewer belongs in this list.
+ */
+function keepViewerFields(previous: PublicState, incoming: PublicState): PublicState {
+  return {
+    ...incoming,
+    yourWord: previous.yourWord,
+    yourChoices: previous.yourChoices,
+    yourCustomWord: previous.yourCustomWord,
+    hostApproval: previous.hostApproval,
+  };
 }
 
 function mergeFeed(previous: FeedEntry[], incoming: FeedEntry[]): FeedEntry[] {
@@ -107,11 +123,7 @@ export function useRoom(code: string) {
     switch (event.type) {
       case "state":
         if (!isStale(event.state, lastSnapshotRef)) {
-          setState((previous) => (previous
-            // A broadcast is built for the whole room, so it never carries the
-            // drawer's own word: keep what we already know.
-            ? { ...event.state, yourWord: previous.yourWord, yourChoices: previous.yourChoices }
-            : event.state));
+          setState((previous) => (previous ? keepViewerFields(previous, event.state) : event.state));
           setFeed((previous) => mergeFeed(previous, event.state.feed));
         }
         scheduleRefresh();
@@ -150,6 +162,11 @@ export function useRoom(code: string) {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => () => {
+    if (refetchTimer.current) clearTimeout(refetchTimer.current);
+    refetchTimer.current = null;
+  }, []);
+
   useEffect(() => {
     const channel = joinRoomChannel(code, onEvent, (status) => setLive(status === "connected"));
     channelRef.current = channel;
@@ -179,15 +196,16 @@ export function useRoom(code: string) {
       .catch(() => undefined);
   }, [currentRoundId]);
 
+  const drawingNow = state?.status === "drawing";
   useEffect(() => {
-    if (live || isDrawer || !currentRoundId) return;
+    if (live || isDrawer || !currentRoundId || !drawingNow) return;
     const interval = setInterval(() => {
       void api.strokes(currentRoundId)
         .then(({ strokes: saved }) => setStrokes(saved))
         .catch(() => undefined);
     }, STROKE_POLL_MS);
     return () => clearInterval(interval);
-  }, [currentRoundId, isDrawer, live]);
+  }, [currentRoundId, isDrawer, live, drawingNow]);
 
   const join = useCallback(async (name: string, avatar: Avatar) => {
     const saved = readSession(code);
@@ -295,6 +313,7 @@ export function useRoom(code: string) {
   return {
     phase, error, notice, state, feed, me, isDrawer, session, frozen,
     strokes, reactions, join, actions, pushStroke, pushCanvas, refresh,
-    liveMode: realtimeEnabled(),
+    /** True only once a Realtime channel is actually subscribed. */
+    live,
   };
 }

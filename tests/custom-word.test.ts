@@ -248,4 +248,52 @@ describe("host approval", () => {
     const result = await engine.submitCustomWord(roundId, auth[drawerId], "space rocket");
     expect(result.status).toBe("approved");
   });
+
+  it("refuses a second word while one is with the host", async () => {
+    const { code, auth, roundId, drawerId } = await pendingRoom();
+    await engine.submitCustomWord(roundId, auth[drawerId], "space rocket");
+    const before = (await engine.publicState(code, drawerId)).round!.endsAt;
+
+    await expect(engine.submitCustomWord(roundId, auth[drawerId], "purple dragon"))
+      .rejects.toThrow(/already with the host/i);
+
+    // The point of the guard: resubmitting must not push the host's deadline.
+    expect((await engine.publicState(code, drawerId)).round!.endsAt).toBe(before);
+    expect((await engine.publicState(code, drawerId)).yourCustomWord?.word).toBe("space rocket");
+  });
+
+  it("refuses to approve a turn that already started", async () => {
+    const { code, auth, roundId, drawerId, hostId } = await pendingRoom();
+    await engine.submitCustomWord(roundId, auth[drawerId], "space rocket");
+    // The drawer gives up waiting and takes a suggestion instead.
+    await engine.chooseWord(roundId, auth[drawerId], 0);
+
+    await expect(engine.resolveCustomWord(roundId, auth[hostId], true))
+      .rejects.toThrow(/already started|Nothing is waiting/i);
+    const state = await engine.publicState(code, hostId);
+    expect(state.hostApproval).toBeNull();
+  });
+});
+
+describe("custom words already in play", () => {
+  let engine: GameEngine;
+  beforeEach(() => { engine = makeEngine(); });
+
+  it("refuses a word that already came up this game", async () => {
+    const { code, auth, roundId, drawerId } = await room(engine);
+    await engine.submitCustomWord(roundId, auth[drawerId], "space rocket");
+    const turn = await nextTurn(engine, code);
+
+    await expect(engine.submitCustomWord(turn.roundId, auth[turn.drawerId], "Space Rocket"))
+      .rejects.toThrow(/already come up/i);
+  });
+
+  it("stores saved words in one case so the list has no near-duplicates", async () => {
+    const { code, auth, roundId, drawerId } = await room(engine);
+    await engine.submitCustomWord(roundId, auth[drawerId], "Space Rocket", { save: true });
+    await engine.saveMyWord(code, auth[drawerId], "space rocket");
+
+    const { words } = await engine.listMyWords(code, auth[drawerId]);
+    expect(words).toEqual(["space rocket"]);
+  });
 });

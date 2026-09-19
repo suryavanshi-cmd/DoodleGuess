@@ -34,6 +34,8 @@ export class GameError extends Error {
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1
 const FEED_LIMIT = 60;
 const GUESS_WINDOW_MS = 10_000;
+
+const MY_WORDS_LIMIT = 20;
 const GUESS_WINDOW_MAX = 12;
 const AVATAR_EMOJI = ["🦊", "🐼", "🐸", "🐙", "🦖", "🐝", "🦄", "🐧", "🐨", "🦉", "🐳", "🍕"];
 const AVATAR_COLORS = ["#f97316", "#14b8a6", "#6366f1", "#ec4899", "#22c55e", "#eab308", "#06b6d4", "#a855f7"];
@@ -350,7 +352,7 @@ export class GameEngine {
     return letters <= 5 ? "easy" : letters <= 9 ? "medium" : "hard";
   }
 
-  private async requireOwnTurn(roundId: string, auth: AuthInput) {
+  private async loadRound(roundId: string, auth: AuthInput) {
     const round = await this.store.getRound(roundId);
     if (!round) throw new GameError("Round not found.", 404, "no_round");
     const room = await this.requireRoomById(round.room_id);
@@ -364,15 +366,23 @@ export class GameEngine {
     rawWord: string,
     options: { save?: boolean } = {},
   ): Promise<{ status: CustomWordStatus }> {
-    const { round, room, player } = await this.requireOwnTurn(roundId, auth);
+    const { round, room, player } = await this.loadRound(roundId, auth);
     if (!room.settings.allowCustomWords) {
       throw new GameError("Custom words are off in this room.", 409, "custom_disabled");
     }
     if (round.drawer_id !== player.id) throw new GameError("It is not your turn.", 403, "not_drawer");
     if (round.status !== "picking") throw new GameError("The word was already chosen.", 409, "already_started");
 
+    if (round.custom_word_status === "pending") {
+      throw new GameError("Your word is already with the host.", 409, "already_pending");
+    }
+
     const check = validateCustomWord(rawWord, { strict: room.settings.strictFilter });
     if (!check.ok) throw new GameError(check.message, 400, `word_${check.reason}`);
+
+    if (room.used_words.some((used) => used.toLowerCase() === check.cleaned.toLowerCase())) {
+      throw new GameError("That word has already come up this game — pick another.", 400, "word_used");
+    }
 
     const feed = await this.store.listFeed(room.id, FEED_LIMIT);
     const said = feed.filter((entry) => !entry.private_to).map((entry) => entry.text);
@@ -380,7 +390,7 @@ export class GameEngine {
       throw new GameError("That word has already been said in the room — pick another.", 400, "word_in-chat");
     }
 
-    if (options.save) await this.saveMyWord(room.code, auth, check.cleaned).catch(() => undefined);
+    if (options.save) await this.storeMyWord(player.id, check.cleaned).catch(() => undefined);
 
     const secret = await this.store.getSecret(round.id);
     if (!secret) throw new GameError("Round is missing its words.", 500, "no_secret");
@@ -410,9 +420,10 @@ export class GameEngine {
   }
 
   async resolveCustomWord(roundId: string, auth: AuthInput, approve: boolean): Promise<void> {
-    const { round, room, player } = await this.requireOwnTurn(roundId, auth);
+    const { round, room, player } = await this.loadRound(roundId, auth);
     if (room.host_id !== player.id) throw new GameError("Only the host can decide.", 403, "not_host");
     if (round.custom_word_status !== "pending") throw new GameError("Nothing is waiting.", 409, "not_pending");
+    if (round.status !== "picking") throw new GameError("That turn has already started.", 409, "already_started");
 
     const secret = await this.store.getSecret(round.id);
     const pending = secret?.pending_word;
@@ -438,7 +449,7 @@ export class GameEngine {
     if (!updated) return;
     await this.store.updateSecret(round.id, { pending_word: null });
     await this.store.updateRoom(room.id, {
-      phase_ends_at: iso(nowMs + TIMING.customApprovalSeconds * 1000),
+      phase_ends_at: iso(nowMs + TIMING.pickSeconds * 1000),
       last_activity_at: iso(nowMs),
     });
     if (round.drawer_id) {
@@ -451,18 +462,23 @@ export class GameEngine {
     const { room, player } = await this.authenticate(code, auth);
     const check = validateCustomWord(rawWord, { strict: room.settings.strictFilter });
     if (!check.ok) throw new GameError(check.message, 400, `word_${check.reason}`);
+    await this.storeMyWord(player.id, check.cleaned);
+    const rows = await this.store.listMyWords(player.id, MY_WORDS_LIMIT);
+    return { words: rows.map((row) => row.word) };
+  }
+
+  private async storeMyWord(playerId: string, word: string): Promise<void> {
     await this.store.addMyWord({
       id: randomUUID(),
-      player_id: player.id,
-      word: check.cleaned,
+      player_id: playerId,
+      word: word.toLowerCase(),
       created_at: iso(this.now()),
     });
-    return this.listMyWords(code, auth);
   }
 
   async listMyWords(code: string, auth: AuthInput): Promise<{ words: string[] }> {
     const { player } = await this.authenticate(code, auth);
-    const rows = await this.store.listMyWords(player.id, 20);
+    const rows = await this.store.listMyWords(player.id, MY_WORDS_LIMIT);
     return { words: rows.map((row) => row.word) };
   }
 
