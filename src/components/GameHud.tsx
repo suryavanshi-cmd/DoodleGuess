@@ -32,7 +32,7 @@ export function GameHud({
   const urgent = seconds !== null && seconds <= 10;
 
   return (
-    <header className="flex shrink-0 items-center gap-2 border-b-2 border-brand bg-surface px-2 py-1.5 sm:px-3">
+    <header className="flex shrink-0 items-center gap-2 border-b border-line bg-surface px-2 py-1.5 sm:px-3">
       <div className="flex w-16 shrink-0 flex-col items-center gap-0.5 sm:w-20">
         <Clock seconds={seconds} progress={progress} urgent={urgent} />
         <span className="font-pixel text-[7px] leading-none text-muted sm:text-[8px]">

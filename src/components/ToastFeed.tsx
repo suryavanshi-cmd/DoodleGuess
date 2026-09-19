@@ -39,10 +39,10 @@ interface Toast {
 /** Text colour inside the pill. The pill itself stays dark for contrast. */
 function toneFor(kind: FeedKind): string {
   switch (kind) {
-    case "correct": return "text-[#4ade80] font-bold";
-    case "synonym": case "close": return "text-[#fbbf24] font-semibold";
-    case "join": case "leave": return "text-white/60";
-    default: return "text-white";
+    case "correct": return "text-success font-bold";
+    case "synonym": case "close": return "text-warning font-semibold";
+    case "join": case "leave": return "text-muted";
+    default: return "text-fg";
   }
 }
 
@@ -129,13 +129,13 @@ export function ToastFeed({ entries, className = "" }: ToastFeedProps) {
         >
           <div className="overflow-hidden">
             <div
-              className={`flex items-center gap-1.5 rounded-2xl bg-black/80 py-1.5 pl-1.5 pr-3
+              className={`glass flex items-center gap-1.5 rounded-lg py-1.5 pl-1.5 pr-3
                 backdrop-blur-sm ${toast.leaving ? "toast-leaving" : "animate-toast-in"}`}
             >
               {toast.entry.name ? <InitialsAvatar name={toast.entry.name} size={20} /> : null}
               <p className={`min-w-0 truncate text-sm leading-tight ${toneFor(toast.entry.kind)}`}>
                 {toast.entry.name && toast.entry.kind !== "correct" ? (
-                  <strong className="font-bold text-white">{toast.entry.name}: </strong>
+                  <strong className="font-bold text-fg">{toast.entry.name}: </strong>
                 ) : null}
                 {toast.entry.text}
               </p>

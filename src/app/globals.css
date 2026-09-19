@@ -5,42 +5,46 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root {
-  /* Light: still blue, just lifted — Facebook's blue-grey canvas. */
-  --bg: #dbe7fb;
-  --bg-glow-a: #b9d2ff;
-  --bg-glow-b: #9cc0ff;
+  /* Editor light: paper white, one grey for every rule, ink for text. */
+  --bg: #f3f3f3;
+  --bg-glow-a: #f3f3f3;
+  --bg-glow-b: #ececec;
   --surface: #ffffff;
-  --surface-2: #eef4ff;
-  --border: #c7d9f5;
-  --fg: #0b1a33;
-  --fg-muted: #55708f;
-  /* Darker than Facebook's #1877F2 so white label text clears AA. */
-  --brand: #0e5fd8;
-  --brand-strong: #0a49a8;
+  --surface-2: #f3f3f3;
+  --border: #d8d8d8;
+  --fg: #1f1f1f;
+  --fg-muted: #616161;
+  /* The accent is ink, not a hue: buttons read as black on white. */
+  --brand: #1f1f1f;
+  --brand-strong: #000000;
   --brand-fg: #ffffff;
-  --accent: #38bdf8;
-  --success: #12805c;
-  --warning: #9a6200;
-  --danger: #c2261f;
+  --accent: #6b6b6b;
+  /* Only the three states that carry meaning keep any colour at all. */
+  --success: #0b7a5b;
+  --warning: #8a6d00;
+  --danger: #c02626;
 }
 
 [data-theme="dark"] {
-  /* Full dark blue: near-black navy surfaces, no grey anywhere. */
-  --bg: #030b1a;
-  --bg-glow-a: #0a2a5c;
-  --bg-glow-b: #061a3d;
-  --surface: #081529;
-  --surface-2: #0d1f3a;
-  --border: #17325c;
-  --fg: #e9f1ff;
-  --fg-muted: #8fa9d2;
-  --brand: #1877f2;
-  --brand-strong: #0e5fd8;
-  --brand-fg: #ffffff;
-  --accent: #4cc9f0;
-  --success: #34d399;
-  --warning: #fbbf24;
-  --danger: #ff6b6b;
+  /* Editor dark: the greys a code editor uses — #1e1e1e canvas, #252526
+     panels, #3c3c3c rules — and white for the type. No hue in the chrome. */
+  --bg: #1e1e1e;
+  --bg-glow-a: #1e1e1e;
+  --bg-glow-b: #1a1a1a;
+  --surface: #252526;
+  --surface-2: #2d2d30;
+  --border: #3c3c3c;
+  --fg: #e4e4e4;
+  --fg-muted: #8c8c8c;
+  /* White accent on black: primary actions invert instead of colouring. */
+  --brand: #e8e8e8;
+  --brand-strong: #ffffff;
+  --brand-fg: #1e1e1e;
+  --accent: #9a9a9a;
+  /* Muted editor greens and reds: enough to read a verdict, never a splash. */
+  --success: #4ec9b0;
+  --warning: #dcdcaa;
+  --danger: #f1707a;
 }
 
 @theme inline {
@@ -71,11 +75,9 @@ html, body {
   min-height: 100dvh;
   background-color: var(--bg);
   color: var(--fg);
-  background-image:
-    radial-gradient(46rem 30rem at 8% -12%, var(--bg-glow-a), transparent 55%),
-    radial-gradient(40rem 28rem at 108% 4%, var(--bg-glow-b), transparent 52%),
-    linear-gradient(180deg, var(--bg-glow-b) 0%, var(--bg) 34%, var(--bg) 100%);
-  background-attachment: fixed;
+  /* Flat, like an editor window. The old radial washes belonged to the blue
+     theme and only muddied a greyscale one. */
+  background-image: none;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -83,30 +85,24 @@ html, body {
 @utility btn {
   /* Compact on a phone, roomier once there is space for it. */
   @apply inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-3 py-2
-         text-sm font-semibold uppercase tracking-wide transition active:scale-[0.98]
+         text-sm font-semibold uppercase tracking-wide active:scale-[0.98]
+         transition-[background-color,border-color,color,transform,opacity] duration-100 ease-out
          disabled:cursor-not-allowed disabled:opacity-50
          sm:min-h-11 sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-base;
 }
 
-/* Frosted card. Deliberately light in both themes: near-black text on a
-   translucent white panel reads over the navy board and the light canvas
-   alike. The blur itself comes from Tailwind's `backdrop-blur-*` utility at
-   the call site — hand-writing backdrop-filter here left Lightning CSS with
-   only the -webkit- spelling, which would drop the effect in Firefox. Without
-   any blur the panel is still 78% white, so the text stays legible. */
+/* Panel card: the same surface and rule as every other panel, just floating.
+   The blur comes from Tailwind's `backdrop-blur-*` at the call site — hand
+   writing backdrop-filter here left Lightning CSS with only the -webkit-
+   spelling, which drops the effect in Firefox. At 88% opaque it stays
+   readable with no blur at all. */
 @utility glass {
-  background: color-mix(in srgb, #ffffff 78%, transparent);
-  /* A white hairline disappears against the white canvas, so the outer edge
-     is a faint ink line and the white highlight sits inside it. */
-  border: 1px solid color-mix(in srgb, #0b1a33 14%, transparent);
-  box-shadow:
-    0 10px 26px -10px rgb(3 11 26 / 0.45),
-    inset 0 1px 0 rgb(255 255 255 / 0.7);
-  color: #0b1a33;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 20px -10px rgb(0 0 0 / 0.6);
+  color: var(--fg);
 }
 
-/* Arcade HUD type. Press Start 2P is wide and has no lowercase rhythm, so it
-   is only ever used for short uppercase labels and numbers, never body text. */
 @utility font-pixel {
   font-family: var(--font-pixel), ui-monospace, monospace;
   letter-spacing: 0;
@@ -134,8 +130,9 @@ html, body {
     color: transparent;
   }
   .btn-primary {
-    @apply btn text-brand-fg shadow-sm hover:brightness-110;
-    background-image: linear-gradient(180deg, var(--brand), var(--brand-strong));
+    /* Flat, like an editor button. The old vertical gradient read as a glossy
+       web control and had nothing to say on a white-on-black accent. */
+    @apply btn bg-brand text-brand-fg hover:bg-brand-strong;
   }
   .btn-ghost {
     @apply btn border border-line bg-surface text-fg hover:bg-surface-2;
@@ -154,24 +151,31 @@ html, body {
   }
 }
 
+/* One curve for everything: fast out of the gate, settled by the end. Every
+   animation below moves transform and opacity only, so none of them touch
+   layout or paint and all of them stay on the compositor. */
+:root {
+  --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @keyframes float-up {
   0% { transform: translateY(0) scale(0.7); opacity: 0; }
   15% { opacity: 1; transform: translateY(-10%) scale(1.1); }
   100% { transform: translateY(-220%) scale(1.3); opacity: 0; }
 }
-.animate-float-up { animation: float-up 2.2s ease-out forwards; }
+.animate-float-up { animation: float-up 1.8s ease-out forwards; }
 
 @keyframes sheet-down {
   from { transform: translateY(-8%); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
 }
-.animate-sheet-down { animation: sheet-down 0.22s ease-out; }
+.animate-sheet-down { animation: sheet-down 0.15s var(--ease-snap); }
 
 @keyframes pop-in {
   from { transform: scale(0.85); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
-.animate-pop-in { animation: pop-in 0.22s ease-out; }
+.animate-pop-in { animation: pop-in 0.14s var(--ease-snap); }
 
 /* Activity toasts: in from the right edge, out the same way. Kept to
    transform and opacity so each card stays on the compositor. */
@@ -179,14 +183,14 @@ html, body {
   from { transform: translate3d(1.75rem, 0, 0) scale(0.96); opacity: 0; }
   to   { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
 }
-.animate-toast-in { animation: toast-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-toast-in { animation: toast-in 0.14s var(--ease-snap) both; }
 
 .toast-leaving { transform: translate3d(1.5rem, 0, 0); opacity: 0; }
 .toast-row {
-  transition: grid-template-rows 0.2s ease-in, opacity 0.2s ease-in;
+  transition: grid-template-rows 0.14s ease-in, opacity 0.14s ease-in;
 }
 .toast-row > * > * {
-  transition: transform 0.2s ease-in, opacity 0.2s ease-in;
+  transition: transform 0.14s ease-in, opacity 0.14s ease-in;
 }
 
 @media (prefers-reduced-motion: reduce) {

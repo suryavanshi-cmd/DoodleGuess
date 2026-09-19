@@ -9,11 +9,16 @@
  * the activity toasts and the presence row — and it needs no stored image.
  */
 
-/** Deterministic hue from the name, so a player keeps the same colour. */
-function hueFor(name: string): number {
+/**
+ * Deterministic shade from the name, so a player keeps the same swatch.
+ * Greyscale rather than a hue: in this theme the only colour on screen is the
+ * one that carries meaning, and "who said this" is told by the letters.
+ */
+function shadeFor(name: string): number {
   let hash = 0;
-  for (const char of name) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 360;
-  return hash;
+  for (const char of name) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 997;
+  // 26-52%: dark enough for white letters, spread enough to tell apart.
+  return 26 + (hash % 7) * 4.5;
 }
 
 /** First letter of the first two words, codepoint-safe for emoji names. */
@@ -33,15 +38,15 @@ export interface InitialsAvatarProps {
 }
 
 export function InitialsAvatar({ name, size = 28, online, className = "" }: InitialsAvatarProps) {
-  const hue = hueFor(name);
+  const shade = shadeFor(name);
 
   return (
     <span className={`relative inline-flex shrink-0 ${className}`} style={{ width: size, height: size }}>
       <span
         className="inline-flex h-full w-full items-center justify-center rounded-full font-bold leading-none text-white"
         style={{
-          // 44% lightness keeps white text above 4.5:1 at every hue.
-          background: `hsl(${hue} 62% 44%)`,
+          // Capped at 52% so white letters stay above 4.5:1 on every swatch.
+          background: `hsl(0 0% ${shade}%)`,
           fontSize: Math.max(10, Math.round(size * 0.42)),
         }}
         title={name}

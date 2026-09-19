@@ -221,8 +221,8 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
           {/* Phone: scoreboard and chat side by side under the board, the way
               every game of this shape reads — who is winning on the left, what
               everyone is shouting on the right. */}
-          <div className="flex min-h-0 flex-1 border-y-2 border-brand lg:hidden">
-            <div className="flex min-h-0 w-[47%] shrink-0 flex-col border-r-2 border-brand">
+          <div className="flex min-h-0 flex-1 border-y border-line lg:hidden">
+            <div className="flex min-h-0 w-[47%] shrink-0 flex-col border-r border-line">
               <PlayerColumn players={state.players} meId={me?.id ?? null} drawerId={round?.drawerId ?? null} />
             </div>
             <div className="flex min-h-0 flex-1 flex-col">
