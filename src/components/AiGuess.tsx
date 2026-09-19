@@ -194,9 +194,11 @@ export function AiGuessOverlay({ guesses, thinking, target, className = "" }: {
 }) {
   if (guesses.length === 0 && !thinking) return null;
 
-  const got = guesses[0] && labelMatches(guesses[0].label, target ?? null);
+  // Any of the three, not just the first. The model is often right with its
+  // second thought, and a game that ignored that would feel meaner than it is.
+  const got = guesses.find((guess) => labelMatches(guess.label, target ?? null));
   const message = got
-    ? `Oh I know, it's ${guesses[0].label}!`
+    ? `Oh I know, it's ${got.label}!`
     : guesses.length > 0
       ? `I see ${guesses.map((guess) => `${guess.label}?`).join(" ")}`
       : "...";

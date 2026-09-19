@@ -95,8 +95,8 @@ export function SoloGame() {
   const onGuess = useCallback((guesses: Prediction[]) => {
     if (phaseRef.current !== "drawing") return;
     const target = words[index];
-    if (!target || !guesses[0]) return;
-    if (!labelMatches(guesses[0].label, target)) return;
+    // Any of the three it offers counts, matching what the bubble says.
+    if (!target || !guesses.some((guess) => labelMatches(guess.label, target))) return;
     phaseRef.current = "won";
     setPhase("won");
     setCelebrations((count) => count + 1);

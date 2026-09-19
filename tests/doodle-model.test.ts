@@ -31,6 +31,23 @@ describe("doodle classifier asset", () => {
     expect(fs.existsSync(WEIGHTS)).toBe(true);
   });
 
+  /**
+   * The weights are served immutable and cached for a year, so a new model
+   * has to arrive under a new name or nobody who has played before will ever
+   * see it. That makes the loader's URL and the file on disk a pair that must
+   * be renamed together, and a mismatch is silent: a 404, and the overlay
+   * simply never appears.
+   */
+  it("loads the files it actually ships", () => {
+    const loader = fs.readFileSync(
+      path.join(process.cwd(), "src", "lib", "doodle", "model.ts"), "utf8",
+    );
+    const urls = [...loader.matchAll(/"\/models\/([^"]+)"/g)].map((match) => match[1]);
+    expect(urls.length).toBe(2);
+    for (const url of urls) expect({ url, exists: fs.existsSync(path.join(MODELS, url)) })
+      .toEqual({ url, exists: true });
+  });
+
   it("declares tensors that exactly fill the weights file", () => {
     const meta = readMeta();
     const bytes = fs.statSync(WEIGHTS).size;
