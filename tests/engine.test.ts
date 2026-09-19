@@ -40,6 +40,15 @@ async function startTurn(engine: GameEngine, code: string, auths: Record<string,
   return { drawerKey: key, drawerId: drawerId!, word: after.yourWord!, choices: drawerState.yourChoices! };
 }
 
+/**
+ * A naive substring check gives false positives — the word "star" appears
+ * inside "drawing has started" — so leaks are matched on word boundaries.
+ */
+function leaks(payload: unknown, word: string): boolean {
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped}\\b`, "i").test(JSON.stringify(payload));
+}
+
 describe("game loop", () => {
   let engine: GameEngine;
   beforeEach(() => { engine = makeEngine(); });
@@ -184,7 +193,7 @@ describe("word secrecy", () => {
         continue;
       }
       expect(state.yourWord).toBeNull();
-      expect(JSON.stringify(state).toLowerCase()).not.toContain(word.toLowerCase());
+      expect(leaks(state, word)).toBe(false);
     }
   });
 
@@ -194,7 +203,7 @@ describe("word secrecy", () => {
     await engine.startGame(code, auth.ana);
     const { word } = await startTurn(engine, code, auth);
     const state = await engine.publicState(code, null);
-    expect(JSON.stringify(state).toLowerCase()).not.toContain(word.toLowerCase());
+    expect(leaks(state, word)).toBe(false);
   });
 
   it("keeps a guess that spells out the word out of public chat", async () => {
@@ -207,7 +216,7 @@ describe("word secrecy", () => {
 
     await engine.sendChat(code, guesser, `guys it is obviously a ${word}`);
     const spectator = await engine.publicState(code, other.playerId);
-    expect(JSON.stringify(spectator.feed).toLowerCase()).not.toContain(word.toLowerCase());
+    expect(leaks(spectator.feed, word)).toBe(false);
   });
 
   it("shows the almost-nudge only to the player who nearly had it", async () => {

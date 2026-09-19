@@ -8,6 +8,15 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Where the authoritative server lives. Defaults to this app's own route
+ * handlers; set NEXT_PUBLIC_GAME_API to the Supabase Edge Function URL
+ * (https://<ref>.supabase.co/functions/v1/game) to use that instead, which
+ * keeps the service key inside Supabase and leaves this app secret-free.
+ */
+const API_BASE = (process.env.NEXT_PUBLIC_GAME_API ?? "/api").replace(/\/$/, "");
+const IS_REMOTE = /^https?:/i.test(API_BASE);
+
 async function request<T>(path: string, init: RequestInit & { session?: Session | null } = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set("content-type", "application/json");
@@ -15,7 +24,14 @@ async function request<T>(path: string, init: RequestInit & { session?: Session 
     headers.set("x-player-id", init.session.playerId);
     headers.set("x-player-token", init.session.token);
   }
-  const response = await fetch(path, { ...init, headers, cache: "no-store" });
+  // Supabase Edge Functions require a project key; the publishable one is
+  // public by design and grants nothing on its own.
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (IS_REMOTE && anonKey) {
+    headers.set("apikey", anonKey);
+    headers.set("authorization", `Bearer ${anonKey}`);
+  }
+  const response = await fetch(`${API_BASE}${path.replace(/^\/api/, "")}`, { ...init, headers, cache: "no-store" });
   const payload = (await response.json().catch(() => null)) as
     | { ok: true; data: T }
     | { ok: false; error: string; code: string }

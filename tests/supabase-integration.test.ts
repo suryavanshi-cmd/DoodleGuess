@@ -48,7 +48,9 @@ describe.skipIf(!configured)("supabase store (integration)", () => {
     const guesserIds = Object.keys(auth).filter((id) => id !== drawerId);
     const guesserView = await engine.publicState(code, guesserIds[0]);
     expect(guesserView.yourWord).toBeNull();
-    expect(JSON.stringify(guesserView).toLowerCase()).not.toContain(word.toLowerCase());
+    // Word boundaries: "star" would otherwise match inside "started".
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    expect(new RegExp(`\\b${escaped}\\b`, "i").test(JSON.stringify(guesserView))).toBe(false);
 
     expect((await engine.submitGuess(code, auth[guesserIds[0]], "definitely a banana")).verdict).toBe("wrong");
     expect((await engine.submitGuess(code, auth[guesserIds[0]], word)).verdict).toBe("correct");

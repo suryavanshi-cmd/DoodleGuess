@@ -147,6 +147,41 @@ reconnect keeps the score, and guess spam is rate-limited.
 
 ## Deploying
 
-The app is a standard Next.js project; deploy it to Vercel and set the three
-environment variables above in the project settings. The Supabase project needs
-the migrations applied and nothing else — no edge functions, no cron.
+The frontend is a standard Next.js app — deploy it to Vercel (or anywhere that
+runs Next). There are two ways to give it an authoritative backend.
+
+**A. Next.js route handlers (default).** Set three environment variables on the
+host and the app serves its own API:
+
+| Variable | Scope |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | browser + server |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | browser + server |
+| `SUPABASE_SERVICE_ROLE_KEY` | **server only** — bypasses RLS |
+
+**B. Supabase Edge Function (no secrets on the host).** Deploy the function in
+`supabase/functions/game`, which is the same engine behind the same routes:
+
+```bash
+supabase functions deploy game --project-ref <ref>
+```
+
+The Edge runtime injects `SUPABASE_SERVICE_ROLE_KEY` itself, so the key never
+leaves Supabase. Then the frontend needs only public values:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<publishable key>
+NEXT_PUBLIC_GAME_API=https://<ref>.supabase.co/functions/v1/game
+```
+
+The function's shared logic under `supabase/functions/game/lib` is generated
+from `src/lib` by `npm run build:edge` — change the engine, regenerate, redeploy.
+Its engine and store are the modules the test suite covers; the HTTP router in
+`supabase/functions/game/index.ts` mirrors `src/app/api` but has not itself been
+exercised against a deployed instance, so give route A or a first game on route
+B a quick smoke test.
+
+Either way the Supabase project needs the migrations in `supabase/migrations/`
+applied and nothing else — no cron, no extra services. `GET /api/health`
+(route A) or `GET <function>/health` (route B) reports which store is live.
