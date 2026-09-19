@@ -185,7 +185,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
             ) : null}
 
             {state.status === "intermission" && state.lastTurn ? (
-              <div className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-black/60 p-3 backdrop-blur-sm">
+              <div className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-scrim p-3 backdrop-blur-sm">
                 <div className="animate-pop-in card max-h-full w-full max-w-md overflow-y-auto p-4">
                   <p className="text-center text-sm text-muted">The word was</p>
                   <p className="text-center text-2xl font-black">{state.lastTurn.word}</p>
@@ -320,7 +320,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
       </div>
 
       {sheetOpen ? (
-        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSheetOpen(false)}>
+        <div className="fixed inset-0 z-40 bg-scrim lg:hidden" onClick={() => setSheetOpen(false)}>
           <div
             className="animate-sheet-down card absolute inset-x-2 top-2 flex max-h-[70dvh] flex-col overflow-hidden"
             onClick={(event) => event.stopPropagation()}
@@ -371,7 +371,7 @@ function HostApproval({ approval, serverTime, onResolve }: {
   const seconds = Math.max(0, Math.ceil((Date.parse(approval.endsAt) - (now + skew)) / 1000));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm lg:absolute lg:z-40 lg:rounded-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-3 backdrop-blur-sm lg:absolute lg:z-40 lg:rounded-2xl">
       <div className="animate-pop-in card max-h-full w-full max-w-sm overflow-y-auto p-4 text-center sm:p-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">Host check · {seconds}s</p>
         <h3 className="mt-1 text-lg">

@@ -33,7 +33,7 @@ export function WordPicker({ choices, onPick, allowCustom, strictFilter, customW
 
   if (waiting) {
     return (
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm lg:absolute lg:z-30 lg:rounded-2xl">
+      <div className="fixed inset-0 z-40 flex items-center justify-center bg-scrim p-4 backdrop-blur-sm lg:absolute lg:z-30 lg:rounded-2xl">
         <div className="animate-pop-in card w-full max-w-sm p-5 text-center">
           <p className="text-4xl" aria-hidden>⏳</p>
           <h3 className="mt-2 text-lg">Waiting for the host</h3>
@@ -47,7 +47,7 @@ export function WordPicker({ choices, onPick, allowCustom, strictFilter, customW
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 p-3 backdrop-blur-sm lg:absolute lg:z-30 lg:rounded-2xl">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-scrim p-3 backdrop-blur-sm lg:absolute lg:z-30 lg:rounded-2xl">
       <div className="animate-pop-in card max-h-full w-full max-w-lg overflow-y-auto p-4 sm:p-5">
         <h3 className="text-center text-lg">Your turn — pick a word</h3>
 

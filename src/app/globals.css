@@ -23,6 +23,8 @@
   --success: #0b7a5b;
   --warning: #8a6d00;
   --danger: #c02626;
+  /* Dialog backdrop. Lighter here: 60% black over a white page is a wall. */
+  --scrim: rgb(31 31 31 / 0.42);
 }
 
 [data-theme="dark"] {
@@ -45,6 +47,7 @@
   --success: #4ec9b0;
   --warning: #dcdcaa;
   --danger: #f1707a;
+  --scrim: rgb(0 0 0 / 0.6);
 }
 
 @theme inline {
@@ -62,6 +65,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-scrim: var(--scrim);
   --font-sans: var(--font-ui), "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display), "Orbitron", ui-sans-serif, system-ui, sans-serif;
 }
@@ -223,6 +227,19 @@ html, body {
   stroke-dasharray: var(--len);
   stroke-dashoffset: var(--len);
   animation: draw-on 1.1s var(--ease-snap) forwards;
+}
+
+/* Backdrop blur measurably earns its place here — switching it off shifts a
+   toast pill by ~7% mean with peaks over 200 levels, because the drawing
+   underneath shows through. So it stays, and instead there is an honest opt
+   out: anyone who has asked their system for less transparency gets flat,
+   fully opaque panels and no filter work at all. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

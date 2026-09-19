@@ -35,9 +35,15 @@ export const viewport: Viewport = {
 const themeScript = `
   try {
     var stored = localStorage.getItem("doodleguess:theme");
-    var theme = stored || "dark";
+    // An explicit choice always wins. Failing that, follow the system; a
+    // system with no opinion gets dark, which is this game's default.
+    var theme = stored === "light" || stored === "dark"
+      ? stored
+      : (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
     document.documentElement.setAttribute("data-theme", theme);
-  } catch (e) {}
+  } catch (e) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  }
   document.documentElement.classList.add("js");
 `;
 
