@@ -12,7 +12,7 @@ export function ReactionBar({ onReact }: { onReact: (emoji: string) => void }) {
           key={emoji}
           type="button"
           onClick={() => onReact(emoji)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-2 text-lg transition active:scale-90 sm:h-11 sm:w-11 sm:text-xl"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-surface-2 text-base transition active:scale-90 sm:h-11 sm:w-11 sm:rounded-xl sm:text-xl"
           aria-label={`React with ${emoji}`}
         >
           {emoji}

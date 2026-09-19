@@ -51,14 +51,14 @@ export function FeedList({ entries, tab }: { entries: FeedEntry[]; tab: FeedTab 
   }, [visible.length, tab]);
 
   return (
-    <div ref={listRef} className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2.5 text-sm" aria-live="polite">
+    <div ref={listRef} className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2 text-xs sm:space-y-1 sm:p-2.5 sm:text-sm" aria-live="polite">
       {visible.length === 0 ? (
         <p className="p-2 text-muted">
           {tab === "chat" ? "Banter goes here — it stays out of the guess feed." : "Guesses will show up here."}
         </p>
       ) : null}
       {visible.map((entry) => (
-        <p key={entry.id} className={`rounded-lg px-2 py-1 ${entryClass(entry)}`}>
+        <p key={entry.id} className={`rounded-md px-1.5 py-0.5 sm:rounded-lg sm:px-2 sm:py-1 ${entryClass(entry)}`}>
           {entry.name && (entry.kind === "chat" || entry.kind === "guess") ? <strong>{entry.name}: </strong> : null}
           {entry.text}
         </p>

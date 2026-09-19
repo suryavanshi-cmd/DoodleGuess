@@ -18,11 +18,11 @@ export function PlayerStrip({ players, meId, drawerId }: {
       {players.map((player) => (
         <li
           key={player.id}
-          className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-2 py-1
+          className={`flex shrink-0 items-center gap-1 rounded-lg border px-1.5 py-0.5
             ${player.guessedCorrect ? "border-success/50 bg-success/10" : "border-line bg-surface"}
             ${player.id === meId ? "ring-1 ring-brand" : ""} ${player.connected ? "" : "opacity-50"}`}
         >
-          <AvatarBadge avatar={player.avatar} size={26} ring={player.id === drawerId} />
+          <AvatarBadge avatar={player.avatar} size={22} ring={player.id === drawerId} />
           <span className="leading-tight">
             <span className="block max-w-20 truncate text-xs font-semibold">
               {player.name}

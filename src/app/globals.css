@@ -58,8 +58,8 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
-  --font-sans: var(--font-ui), "Barlow Condensed", ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-display), "Anton", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-ui), "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), "Orbitron", ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
@@ -81,23 +81,26 @@ html, body {
 
 /* `btn` is registered as a real utility so the variants below can @apply it. */
 @utility btn {
-  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5
-         text-base font-semibold transition active:scale-[0.98]
-         disabled:cursor-not-allowed disabled:opacity-50;
+  /* Compact on a phone, roomier once there is space for it. */
+  @apply inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-3 py-2
+         text-sm font-semibold uppercase tracking-wide transition active:scale-[0.98]
+         disabled:cursor-not-allowed disabled:opacity-50
+         sm:min-h-11 sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-base;
 }
 
 @utility font-display {
   font-family: var(--font-display);
-  letter-spacing: 0.01em;
+  /* Wide tracking is the whole character of this style. */
+  letter-spacing: 0.08em;
 }
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-line bg-surface shadow-sm;
+    @apply rounded-xl border border-line bg-surface shadow-sm sm:rounded-2xl;
   }
   /* Headings, the wordmark and the word itself wear the display face. */
   h1, h2, h3 {
-    @apply font-display uppercase tracking-wide;
+    @apply font-display uppercase;
   }
   /* Headline treatment used for the wordmark and big moments. */
   .text-gradient {
@@ -114,14 +117,16 @@ html, body {
     @apply btn border border-line bg-surface text-fg hover:bg-surface-2;
   }
   .input {
-    @apply min-h-11 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-base
-           text-fg outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/30;
+    @apply min-h-10 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm
+           text-fg outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/30
+           sm:min-h-11 sm:rounded-xl sm:px-3.5 sm:py-2.5 sm:text-base;
   }
   .label {
-    @apply text-sm font-semibold text-muted;
+    @apply text-xs font-semibold uppercase tracking-wide text-muted sm:text-sm;
   }
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3 py-1 text-sm font-medium;
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-surface-2 px-2 py-0.5
+           text-xs font-semibold uppercase tracking-wide sm:gap-1.5 sm:px-3 sm:py-1 sm:text-sm;
   }
 }
 

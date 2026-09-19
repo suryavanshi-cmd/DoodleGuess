@@ -88,8 +88,8 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
     : canGuess ? "Type your guess…" : "Guessing is paused";
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-7xl flex-col gap-2 overflow-hidden px-2 py-2 sm:px-3 lg:gap-3 lg:px-4 lg:py-3">
-      <header className="card flex items-center gap-2 px-2.5 py-2 sm:gap-3 sm:px-3">
+    <div className="mx-auto flex h-dvh w-full max-w-7xl flex-col gap-1.5 overflow-hidden px-1.5 py-1.5 sm:gap-2 sm:px-3 sm:py-2 lg:gap-3 lg:px-4 lg:py-3">
+      <header className="card flex items-center gap-1.5 px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
         <span className="chip shrink-0 px-2 text-xs sm:text-sm">
           {state.roundNumber}/{state.totalRounds}
         </span>
@@ -138,8 +138,8 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
         </span>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-3">
-        <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2 lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2">
           <div className="relative flex shrink-0 flex-col justify-center lg:min-h-0 lg:flex-1">
             {textMode && round ? (
               <ClueBoard
@@ -261,7 +261,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
       </div>
 
       {/* Phone: roster rail and the guess box stay put at the bottom. */}
-      <div className="flex shrink-0 flex-col gap-2 lg:hidden">
+      <div className="flex shrink-0 flex-col gap-1.5 lg:hidden">
         <PlayerStrip players={state.players} meId={me?.id ?? null} drawerId={round?.drawerId ?? null} />
         <GuessInput
           tab={tab}

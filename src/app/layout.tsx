@@ -1,18 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Anton, Barlow_Condensed } from "next/font/google";
+import { Orbitron, Rajdhani } from "next/font/google";
 import "./globals.css";
 
 /**
- * Fortnite's Burbank Big Condensed is a licensed Adobe face we cannot ship,
- * so this is the closest free pairing: Anton for heavy condensed display type
- * and Barlow Condensed for small, dense UI text.
+ * Sci-fi HUD pairing. Perfect Dark, Ghost Clan, Neuropolitical and Good Times
+ * are all licensed faces we cannot ship, so this is the closest free match:
+ * Orbitron for the wide geometric display type (the Good Times look) and
+ * Rajdhani for squarish, narrow HUD text that stays legible when compact.
  */
-const display = Anton({ weight: "400", subsets: ["latin"], variable: "--font-display" });
-const ui = Barlow_Condensed({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin"],
-  variable: "--font-ui",
-});
+const display = Orbitron({ weight: ["600", "800"], subsets: ["latin"], variable: "--font-display" });
+const ui = Rajdhani({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-ui" });
 
 export const metadata: Metadata = {
   title: "DoodleGuess — draw, guess, laugh",

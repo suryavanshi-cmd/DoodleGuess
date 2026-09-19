@@ -119,22 +119,30 @@ describe("text-clue mode", () => {
     if (!synonym) return; // no synonym came up in this run
 
     await engineWithSynonym.submitClue(room.roundId, room.auth[room.giverId], "Guess what this might be");
+
+    // Compare what this turn paid, not career totals: the loop above may have
+    // banked points in earlier turns, which made this assertion flaky.
+    const before = await engineWithSynonym.publicState(room.code, null);
+    const scoreOf = (state: { players: { id: string; score: number }[] }, id: string) =>
+      state.players.find((p) => p.id === id)!.score;
+
     advance(2_000);
     const verdict = await engineWithSynonym.submitGuess(room.code, room.auth[room.guessers[0]], synonym);
     expect(verdict.verdict).toBe("correct");
 
-    const state = await engineWithSynonym.publicState(room.code, room.guessers[0]);
-    const scorer = state.players.find((p) => p.id === room.guessers[0])!;
-    expect(scorer.score).toBeGreaterThan(0);
-    expect(state.feed.some((f) => f.kind === "synonym")).toBe(true);
+    const mid = await engineWithSynonym.publicState(room.code, room.guessers[0]);
+    expect(mid.feed.some((f) => f.kind === "synonym")).toBe(true);
 
-    // Exact answer from the other guesser must be worth more than the synonym.
+    // The exact answer from the other guesser must pay more than the synonym.
     const exact = await engineWithSynonym.submitGuess(room.code, room.auth[room.guessers[1]], room.word);
     expect(exact.verdict).toBe("correct");
+
     const after = await engineWithSynonym.publicState(room.code, null);
-    const exactScore = after.players.find((p) => p.id === room.guessers[1])!.score;
-    expect(scorer.score).toBeLessThan(exactScore);
-    expect(scorer.score / exactScore).toBeLessThanOrEqual(SYNONYM_POINTS_FACTOR + 0.2);
+    const synonymGain = scoreOf(after, room.guessers[0]) - scoreOf(before, room.guessers[0]);
+    const exactGain = scoreOf(after, room.guessers[1]) - scoreOf(before, room.guessers[1]);
+    expect(synonymGain).toBeGreaterThan(0);
+    expect(synonymGain).toBeLessThan(exactGain);
+    expect(synonymGain / exactGain).toBeLessThanOrEqual(SYNONYM_POINTS_FACTOR + 0.2);
   });
 
   it("falls back to the bundled clue bank if the Clue-Giver runs out of time", async () => {
