@@ -93,7 +93,7 @@ export function Landing() {
               <span className="text-gradient">Doodle</span>Guess
             </h1>
           </Link>
-          <p className="mt-0.5 text-sm text-muted sm:text-base">Draw it, or clue it. Then watch everyone flail.</p>
+          <p className="font-hero mt-1 text-sm text-muted sm:text-base">Draw it, or clue it. Then watch everyone flail.</p>
         </div>
         <ThemeToggle />
       </header>
@@ -119,7 +119,7 @@ export function Landing() {
       ) : null}
 
       <div className="grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
-        <section className="card min-w-0 p-3 sm:p-5">
+        <section className="pane min-w-0 rounded-2xl p-3 sm:p-5">
           <div className="grid grid-cols-2 gap-2">
             {MODE_CARDS.map((mode) => (
               <button
@@ -177,8 +177,8 @@ export function Landing() {
         </section>
 
         <div className="flex min-w-0 flex-col gap-4">
-          <section className="card min-w-0 p-3 sm:p-5">
-            <h2 className="text-lg font-bold">Join a room</h2>
+          <section className="pane min-w-0 rounded-2xl p-3 sm:p-5">
+            <h2 className="font-hero text-lg font-semibold normal-case tracking-[-0.01em]">Join a room</h2>
             <div className="mt-2 flex gap-2">
               <input
                 className="input font-mono text-lg uppercase tracking-[0.3em]"
@@ -207,13 +207,13 @@ export function Landing() {
             ) : null}
           </section>
 
-          <section className="card hidden min-w-0 p-4 sm:block sm:p-5">
-            <h2 className="text-lg font-bold">Why it plays better</h2>
-            <ul className="mt-2 grid gap-2 text-sm text-muted sm:grid-cols-2 lg:grid-cols-1">
-              <li>🎯 <strong className="text-fg">Typos still count</strong> — “elefant” scores; “almost!” stays private.</li>
-              <li>💬 <strong className="text-fg">Clue mode</strong> — no canvas, just one sly sentence.</li>
-              <li>🔐 <strong className="text-fg">No peeking</strong> — the word never leaves the server.</li>
-              <li>🎬 <strong className="text-fg">Replay & recap</strong> — MVP artist, fastest guesser.</li>
+          <section className="pane hidden min-w-0 rounded-2xl p-4 sm:block sm:p-5">
+            <h2 className="font-hero text-lg font-semibold normal-case tracking-[-0.01em]">Why it plays better</h2>
+            <ul className="font-hero mt-3 grid gap-2.5 text-sm leading-relaxed text-muted sm:grid-cols-2 lg:grid-cols-1">
+              <li><strong className="font-semibold text-fg">Typos still count</strong> — “elefant” scores; “almost!” stays private.</li>
+              <li><strong className="font-semibold text-fg">Clue mode</strong> — no canvas, just one sly sentence.</li>
+              <li><strong className="font-semibold text-fg">No peeking</strong> — the word never leaves the server.</li>
+              <li><strong className="font-semibold text-fg">Replay &amp; recap</strong> — MVP artist, fastest guesser.</li>
             </ul>
             <p className="mt-3 text-xs text-muted">
               Nickname, avatar and score for the session only. No ads, no tracking, no accounts.

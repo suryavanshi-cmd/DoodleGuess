@@ -187,7 +187,7 @@ export function Canvas({
               <button type="button" className="btn-ghost px-2" onClick={redo} disabled={!redoStack.length} title="Redo">↪️</button>
               <button type="button" className="btn-ghost px-2" onClick={clear} title="Clear the canvas">🗑️</button>
               <button
-                type="button" className="btn-ghost px-2 sm:px-3" onClick={() => setShowMore((open) => !open)}
+                type="button" className="btn-ghost min-w-10 px-2 sm:px-3" onClick={() => setShowMore((open) => !open)}
                 aria-expanded={showMore} title="More tools"
               >
                 <span aria-hidden className="sm:hidden">{showMore ? "×" : "⋯"}</span>
