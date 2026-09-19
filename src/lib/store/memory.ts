@@ -1,5 +1,5 @@
 import type {
-  ClueBankRow, FeedRow, GameStore, GuessRow, PlayerRow, RoomRow, RoundRow, RoundSecretRow, StrokeRow, WordPackRow,
+  ClueBankRow, FeedRow, MyWordRow, GameStore, GuessRow, PlayerRow, RoomRow, RoundRow, RoundSecretRow, StrokeRow, WordPackRow,
 } from "./types";
 
 function clone<T>(value: T): T {
@@ -25,6 +25,7 @@ export class MemoryStore implements GameStore {
   private strokes: StrokeRow[] = [];
   private packs = new Map<string, WordPackRow>();
   private clueBank: ClueBankRow[] = [];
+  private myWords: MyWordRow[] = [];
 
   async createRoom(row: RoomRow) {
     this.rooms.set(row.id, clone(row));
@@ -146,6 +147,20 @@ export class MemoryStore implements GameStore {
   async getWordPack(id: string) {
     const p = this.packs.get(id);
     return p ? clone(p) : null;
+  }
+
+  async addMyWord(row: MyWordRow) {
+    const exists = this.myWords.some(
+      (w) => w.player_id === row.player_id && w.word.toLowerCase() === row.word.toLowerCase(),
+    );
+    if (!exists) this.myWords.push(clone(row));
+  }
+  async listMyWords(playerId: string, limit: number) {
+    return this.myWords
+      .filter((w) => w.player_id === playerId)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .slice(0, limit)
+      .map(clone);
   }
 
   async addClueToBank(row: ClueBankRow) {

@@ -70,6 +70,22 @@ export const api = {
       method: "POST", session, body: JSON.stringify({ roundId, index }),
     }),
 
+  customWord: (code: string, session: Session, roundId: string, word: string, save: boolean) =>
+    request<{ status: "pending" | "approved" | "rejected"; state: import("@/lib/game/types").PublicState }>(
+      `/api/rooms/${code}/custom-word`,
+      { method: "POST", session, body: JSON.stringify({ roundId, word, save }) },
+    ),
+
+  resolveCustomWord: (code: string, session: Session, roundId: string, approve: boolean) =>
+    request<import("@/lib/game/types").PublicState>(`/api/rooms/${code}/custom-word/resolve`, {
+      method: "POST", session, body: JSON.stringify({ roundId, approve }),
+    }),
+
+  myWords: (code: string, session: Session, word?: string) =>
+    request<{ words: string[] }>(`/api/rooms/${code}/my-words`, {
+      method: "POST", session, body: JSON.stringify(word ? { word } : {}),
+    }),
+
   clue: (code: string, session: Session, roundId: string, text: string) =>
     request<import("@/lib/game/types").PublicState>(`/api/rooms/${code}/clue`, {
       method: "POST", session, body: JSON.stringify({ roundId, text }),

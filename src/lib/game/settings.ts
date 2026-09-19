@@ -15,6 +15,10 @@ export interface RoomSettings {
   isPublic: boolean;
   /** Mixed-age default: on. Hosts can relax the mild tier, never the severe one. */
   strictFilter: boolean;
+  /** Let the drawer type their own word instead of taking a suggestion. */
+  allowCustomWords: boolean;
+  /** Send each custom word to the host to approve before the turn starts. */
+  requireHostApproval: boolean;
   maxPlayers: number;
 }
 
@@ -33,6 +37,8 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   hardcore: false,
   isPublic: false,
   strictFilter: true,
+  allowCustomWords: true,
+  requireHostApproval: false,
   maxPlayers: 12,
 };
 
@@ -71,8 +77,16 @@ export function normalizeSettings(input: unknown, base: RoomSettings = DEFAULT_S
     hardcore,
     isPublic: bool(raw.isPublic, base.isPublic),
     strictFilter: bool(raw.strictFilter, base.strictFilter),
+    allowCustomWords: bool(raw.allowCustomWords, base.allowCustomWords),
+    requireHostApproval: bool(raw.requireHostApproval, base.requireHostApproval),
     maxPlayers: clampInt(raw.maxPlayers, base.maxPlayers, LIMITS.maxPlayers.min, LIMITS.maxPlayers.max),
   };
+  // Public rooms get custom words off unless the host asks for them: anyone
+  // can walk in, and the word is the one thing they fully control.
+  if (settings.isPublic && raw.allowCustomWords === undefined) {
+    settings.allowCustomWords = false;
+  }
+
   if (settings.hardcore) {
     // Hardcore is opt-in pressure, not a default: shorter clock, no hints.
     settings.turnSeconds = Math.min(settings.turnSeconds, 45);
@@ -92,4 +106,6 @@ export const TIMING = {
   freezeMs: 5_000,
   /** How long the Clue-Giver has to write their clue in text mode. */
   clueSeconds: 45,
+  /** Host has this long to approve a custom word before it falls back. */
+  customApprovalSeconds: 12,
 } as const;

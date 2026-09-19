@@ -231,6 +231,22 @@ export function useRoom(code: string) {
         }
       }),
     guess: (text: string) => withSession((s) => api.guess(code, s, text))(),
+    submitCustomWord: (roundId: string, word: string, save: boolean) =>
+      withSession((s) => api.customWord(code, s, roundId, word, save))().then((result) => {
+        if (result && !isStale(result.state, lastSnapshotRef)) {
+          setState(result.state);
+          setFeed((previous) => mergeFeed(previous, result.state.feed));
+        }
+        return result;
+      }),
+    resolveCustomWord: (roundId: string, approve: boolean) =>
+      withSession((s) => api.resolveCustomWord(code, s, roundId, approve))().then((next) => {
+        if (next && !isStale(next, lastSnapshotRef)) {
+          setState(next);
+          setFeed((previous) => mergeFeed(previous, next.feed));
+        }
+      }),
+    myWords: (word?: string) => withSession((s) => api.myWords(code, s, word))(),
     submitClue: (roundId: string, text: string) =>
       withSession((s) => api.clue(code, s, roundId, text))().then((next) => {
         if (next && !isStale(next, lastSnapshotRef)) {

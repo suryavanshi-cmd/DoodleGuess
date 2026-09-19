@@ -5,6 +5,7 @@ import type {
 } from "@/lib/store/types";
 import { evaluateGuess } from "./fuzzy";
 import { validateClue } from "./clues";
+import { validateCustomWord, wordAlreadySaid } from "./customWord";
 import { bankCluesFor } from "./clueBank";
 import { isSynonym } from "./synonyms";
 import { maskWord, revealTimeline, revealedAt, wordShape } from "./mask";
@@ -17,7 +18,8 @@ import { DEFAULT_SETTINGS, TIMING, normalizeSettings } from "./settings";
 import { mulberry32, seedFrom } from "./text";
 import { builtinPack, drawWordChoices, entriesFromCustomWords, rotateCategories, type WordEntry } from "./words";
 import type {
-  Avatar, FeedEntry, MatchType, PublicPlayer, PublicRound, PublicState, Recap, Stroke, TurnResult,
+  Avatar, CustomWordStatus, FeedEntry, MatchType, PublicPlayer, PublicRound, PublicState, Recap,
+  Stroke, TurnResult, WordSource,
 } from "./types";
 
 export class GameError extends Error {
@@ -315,6 +317,8 @@ export class GameEngine {
       ends_at: null,
       ended_at: null,
       revealed_word: null,
+      word_source: "suggested",
+      custom_word_status: null,
       clue_text: null,
       clue_source: null,
       created_at: iso(nowMs),
@@ -349,6 +353,136 @@ export class GameEngine {
     return round;
   }
 
+  /** Difficulty of a typed word, by length — the same rule custom packs use. */
+  private customDifficulty(word: string): Difficulty {
+    const letters = word.replace(/\s/g, "").length;
+    return letters <= 5 ? "easy" : letters <= 9 ? "medium" : "hard";
+  }
+
+  private async requireOwnTurn(roundId: string, auth: AuthInput) {
+    const round = await this.store.getRound(roundId);
+    if (!round) throw new GameError("Round not found.", 404, "no_round");
+    const room = await this.requireRoomById(round.room_id);
+    const { player } = await this.authenticate(room.code, auth);
+    return { round, room, player };
+  }
+
+  /**
+   * The drawer types their own word instead of taking a suggestion. Validation
+   * is length, character set, the existing word filter and a check that the
+   * word has not already been said in the room — all local, no model call.
+   */
+  async submitCustomWord(
+    roundId: string,
+    auth: AuthInput,
+    rawWord: string,
+    options: { save?: boolean } = {},
+  ): Promise<{ status: CustomWordStatus }> {
+    const { round, room, player } = await this.requireOwnTurn(roundId, auth);
+    if (!room.settings.allowCustomWords) {
+      throw new GameError("Custom words are off in this room.", 409, "custom_disabled");
+    }
+    if (round.drawer_id !== player.id) throw new GameError("It is not your turn.", 403, "not_drawer");
+    if (round.status !== "picking") throw new GameError("The word was already chosen.", 409, "already_started");
+
+    const check = validateCustomWord(rawWord, { strict: room.settings.strictFilter });
+    if (!check.ok) throw new GameError(check.message, 400, `word_${check.reason}`);
+
+    // Anything already said out loud would hand the round to whoever said it.
+    const feed = await this.store.listFeed(room.id, FEED_LIMIT);
+    const said = feed.filter((entry) => !entry.private_to).map((entry) => entry.text);
+    if (wordAlreadySaid(said, check.cleaned)) {
+      throw new GameError("That word has already been said in the room — pick another.", 400, "word_in-chat");
+    }
+
+    if (options.save) await this.saveMyWord(room.code, auth, check.cleaned).catch(() => undefined);
+
+    const secret = await this.store.getSecret(round.id);
+    if (!secret) throw new GameError("Round is missing its words.", 500, "no_secret");
+
+    const hostIsSomeoneElse = Boolean(room.host_id && room.host_id !== player.id);
+    if (room.settings.requireHostApproval && hostIsSomeoneElse) {
+      const nowMs = this.now();
+      await this.store.updateRound(round.id, {
+        word_source: "custom",
+        custom_word_status: "pending",
+      }, { status: "picking" });
+      await this.store.updateSecret(round.id, { pending_word: check.cleaned });
+      await this.store.updateRoom(room.id, {
+        phase_ends_at: iso(nowMs + TIMING.customApprovalSeconds * 1000),
+        last_activity_at: iso(nowMs),
+      });
+      await this.pushFeed(room, { kind: "system", text: `${player.name} suggested their own word — waiting for the host.` });
+      await this.broadcastState(room.code);
+      return { status: "pending" };
+    }
+
+    await this.startDrawing(room, round, secret, {
+      word: check.cleaned,
+      difficulty: this.customDifficulty(check.cleaned),
+    }, { source: "custom", status: "approved" });
+    return { status: "approved" };
+  }
+
+  /** Host decides on a pending custom word. */
+  async resolveCustomWord(roundId: string, auth: AuthInput, approve: boolean): Promise<void> {
+    const { round, room, player } = await this.requireOwnTurn(roundId, auth);
+    if (room.host_id !== player.id) throw new GameError("Only the host can decide.", 403, "not_host");
+    if (round.custom_word_status !== "pending") throw new GameError("Nothing is waiting.", 409, "not_pending");
+
+    const secret = await this.store.getSecret(round.id);
+    const pending = secret?.pending_word;
+    if (!secret || !pending) throw new GameError("That word is gone.", 409, "no_pending");
+
+    if (approve) {
+      await this.startDrawing(room, round, secret, {
+        word: pending,
+        difficulty: this.customDifficulty(pending),
+      }, { source: "custom", status: "approved" });
+      return;
+    }
+
+    await this.rejectPendingWord(room, round, "The host asked for a different word.");
+  }
+
+  /** Back to the pick screen with enough clock left to choose again. */
+  private async rejectPendingWord(room: RoomRow, round: RoundRow, reason: string): Promise<void> {
+    const nowMs = this.now();
+    const updated = await this.store.updateRound(round.id, {
+      custom_word_status: "rejected",
+      word_source: "suggested",
+    }, { status: "picking" });
+    if (!updated) return;
+    await this.store.updateSecret(round.id, { pending_word: null });
+    await this.store.updateRoom(room.id, {
+      phase_ends_at: iso(nowMs + TIMING.customApprovalSeconds * 1000),
+      last_activity_at: iso(nowMs),
+    });
+    if (round.drawer_id) {
+      await this.pushFeed(room, { kind: "system", text: reason, privateTo: round.drawer_id });
+    }
+    await this.broadcastState(room.code);
+  }
+
+  async saveMyWord(code: string, auth: AuthInput, rawWord: string): Promise<{ words: string[] }> {
+    const { room, player } = await this.authenticate(code, auth);
+    const check = validateCustomWord(rawWord, { strict: room.settings.strictFilter });
+    if (!check.ok) throw new GameError(check.message, 400, `word_${check.reason}`);
+    await this.store.addMyWord({
+      id: randomUUID(),
+      player_id: player.id,
+      word: check.cleaned,
+      created_at: iso(this.now()),
+    });
+    return this.listMyWords(code, auth);
+  }
+
+  async listMyWords(code: string, auth: AuthInput): Promise<{ words: string[] }> {
+    const { player } = await this.authenticate(code, auth);
+    const rows = await this.store.listMyWords(player.id, 20);
+    return { words: rows.map((row) => row.word) };
+  }
+
   async chooseWord(roundId: string, auth: AuthInput, choiceIndex: number): Promise<void> {
     const round = await this.store.getRound(roundId);
     if (!round) throw new GameError("Round not found.", 404, "no_round");
@@ -369,6 +503,7 @@ export class GameEngine {
     round: RoundRow,
     secret: RoundSecretRow,
     choice: { word: string; difficulty: Difficulty },
+    origin: { source: WordSource; status: CustomWordStatus | null } = { source: "suggested", status: null },
   ): Promise<void> {
     const nowMs = this.now();
     const textMode = room.settings.gameMode === "text_clue";
@@ -387,12 +522,14 @@ export class GameEngine {
       difficulty: choice.difficulty,
       word_length: choice.word.length,
       shape: wordShape(choice.word),
+      word_source: origin.source,
+      custom_word_status: origin.status,
       started_at: textMode ? null : iso(nowMs),
       ends_at: textMode ? null : iso(endsAt),
     }, { status: "picking" });
     if (!started) return; // someone else already started this turn
 
-    await this.store.updateSecret(round.id, { word: choice.word, reveal_timeline: timeline });
+    await this.store.updateSecret(round.id, { word: choice.word, reveal_timeline: timeline, pending_word: null });
     await this.store.updateRoom(room.id, {
       status: textMode ? "clue" : "drawing",
       phase_ends_at: iso(textMode ? clueDeadline : endsAt),
@@ -501,11 +638,32 @@ export class GameEngine {
     if (room.status === "picking" && room.current_round_id) {
       const round = await this.store.getRound(room.current_round_id);
       const secret = round ? await this.store.getSecret(round.id) : null;
-      if (round && secret && round.status === "picking") {
-        // Out of time: the game picks for them (the middle tier is the fair default).
-        const choice = secret.choices[1] ?? secret.choices[0];
-        if (choice) await this.startDrawing(room, round, secret, choice);
+      if (!round || !secret || round.status !== "picking") return;
+
+      // A custom word waiting on the host falls back to a suggestion rather
+      // than stalling the turn on one person's attention.
+      if (round.custom_word_status === "pending") {
+        const cleared = await this.store.updateRound(round.id, {
+          custom_word_status: "rejected",
+          word_source: "suggested",
+        }, { status: "picking" });
+        if (!cleared) return;
+        await this.store.updateSecret(round.id, { pending_word: null });
+        if (round.drawer_id) {
+          await this.pushFeed(room, {
+            kind: "system",
+            text: "No answer from the host, so the game picked a word for you.",
+            privateTo: round.drawer_id,
+          });
+        }
+        const fallback = secret.choices[1] ?? secret.choices[0];
+        if (fallback) await this.startDrawing(room, cleared, secret, fallback);
+        return;
       }
+
+      // Out of time: the game picks for them (the middle tier is the fair default).
+      const choice = secret.choices[1] ?? secret.choices[0];
+      if (choice) await this.startDrawing(room, round, secret, choice);
       return;
     }
 
@@ -966,6 +1124,8 @@ export class GameEngine {
     }
 
     const isDrawer = Boolean(viewerId && round && round.drawer_id === viewerId && round.status !== "ended");
+    const isHostViewer = Boolean(viewerId && room.host_id === viewerId);
+    const pendingWord = round?.custom_word_status === "pending" ? secret?.pending_word ?? null : null;
 
     return {
       code: room.code,
@@ -984,6 +1144,16 @@ export class GameEngine {
       serverTime: iso(this.now()),
       yourWord: isDrawer ? secret?.word ?? null : null,
       yourChoices: isDrawer && round?.status === "picking" ? secret?.choices ?? null : null,
+      yourCustomWord: isDrawer && round ? customWordView(round.custom_word_status, pendingWord) : null,
+      // Approving means seeing the answer, so this only ever goes to the host.
+      hostApproval: isHostViewer && round && pendingWord && room.phase_ends_at
+        ? {
+            roundId: round.id,
+            word: pendingWord,
+            drawerName: players.find((p) => p.id === round.drawer_id)?.name ?? "Someone",
+            endsAt: room.phase_ends_at,
+          }
+        : null,
     };
   }
 
@@ -1112,6 +1282,15 @@ export class GameEngine {
 export interface AuthInput {
   playerId?: string | null;
   token?: string | null;
+}
+
+/** What the drawer sees about their own custom word while it is decided. */
+function customWordView(status: CustomWordStatus | null, pending: string | null) {
+  if (status === "pending" && pending) return { word: pending, status: "pending" as const };
+  if (status === "rejected") {
+    return { word: "", status: "rejected" as const, message: "That word was not used — pick another." };
+  }
+  return null;
 }
 
 function toFeedEntry(row: FeedRow): FeedEntry {

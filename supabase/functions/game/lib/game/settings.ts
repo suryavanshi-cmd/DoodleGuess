@@ -18,6 +18,10 @@ export interface RoomSettings {
   isPublic: boolean;
 
   strictFilter: boolean;
+
+  allowCustomWords: boolean;
+
+  requireHostApproval: boolean;
   maxPlayers: number;
 }
 
@@ -32,6 +36,8 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   hardcore: false,
   isPublic: false,
   strictFilter: true,
+  allowCustomWords: true,
+  requireHostApproval: false,
   maxPlayers: 12,
 };
 
@@ -41,7 +47,7 @@ export const LIMITS = {
   maxPlayers: { min: 2, max: 16 },
 } as const;
 
-const PACKS: PackId[] = ["simple", "tricky", "mixed", "custom"];
+const PACKS: PackId[] = ["simple", "tricky", "genz", "mixed", "custom"];
 const MODES: GameMode[] = ["draw", "text_clue"];
 
 function clampInt(value: unknown, fallback: number, min: number, max: number): number {
@@ -69,8 +75,15 @@ export function normalizeSettings(input: unknown, base: RoomSettings = DEFAULT_S
     hardcore,
     isPublic: bool(raw.isPublic, base.isPublic),
     strictFilter: bool(raw.strictFilter, base.strictFilter),
+    allowCustomWords: bool(raw.allowCustomWords, base.allowCustomWords),
+    requireHostApproval: bool(raw.requireHostApproval, base.requireHostApproval),
     maxPlayers: clampInt(raw.maxPlayers, base.maxPlayers, LIMITS.maxPlayers.min, LIMITS.maxPlayers.max),
   };
+
+  if (settings.isPublic && raw.allowCustomWords === undefined) {
+    settings.allowCustomWords = false;
+  }
+
   if (settings.hardcore) {
 
     settings.turnSeconds = Math.min(settings.turnSeconds, 45);
@@ -90,4 +103,6 @@ export const TIMING = {
   freezeMs: 5_000,
 
   clueSeconds: 45,
+
+  customApprovalSeconds: 12,
 } as const;

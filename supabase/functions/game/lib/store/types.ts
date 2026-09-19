@@ -68,6 +68,9 @@ export interface RoundRow {
 
   revealed_word: string | null;
 
+  word_source: import("../game/types.ts").WordSource;
+  custom_word_status: import("../game/types.ts").CustomWordStatus | null;
+
   clue_text: string | null;
   clue_source: "human" | "clue_bank" | null;
   created_at: string;
@@ -76,6 +79,8 @@ export interface RoundRow {
 export interface RoundSecretRow {
   round_id: string;
   word: string;
+
+  pending_word?: string | null;
   choices: { word: string; difficulty: Difficulty }[];
   reveal_timeline: { atMs: number; index: number }[];
 }
@@ -109,6 +114,13 @@ export interface StrokeRow {
   round_id: string;
   seq: number;
   data: Stroke;
+}
+
+export interface MyWordRow {
+  id: string;
+  player_id: string;
+  word: string;
+  created_at: string;
 }
 
 export interface ClueBankRow {
@@ -163,6 +175,9 @@ export interface GameStore {
 
   createWordPack(row: WordPackRow): Promise<WordPackRow>;
   getWordPack(id: string): Promise<WordPackRow | null>;
+
+  addMyWord(row: MyWordRow): Promise<void>;
+  listMyWords(playerId: string, limit: number): Promise<MyWordRow[]>;
 
   addClueToBank(row: ClueBankRow): Promise<void>;
   listBankClues(word: string, limit: number): Promise<ClueBankRow[]>;

@@ -64,6 +64,9 @@ export interface RoundRow {
   ended_at: string | null;
   /** Written only when the turn ends; before that the word lives in round_secrets. */
   revealed_word: string | null;
+  /** Whether the answer came from the suggestions or the drawer typed it. */
+  word_source: import("@/lib/game/types").WordSource;
+  custom_word_status: import("@/lib/game/types").CustomWordStatus | null;
   /** Text mode: the clue written for this word, and where it came from. */
   clue_text: string | null;
   clue_source: "human" | "clue_bank" | null;
@@ -73,6 +76,8 @@ export interface RoundRow {
 export interface RoundSecretRow {
   round_id: string;
   word: string;
+  /** A custom word waiting on the host. Server-side only, like `word`. */
+  pending_word?: string | null;
   choices: { word: string; difficulty: Difficulty }[];
   reveal_timeline: { atMs: number; index: number }[];
 }
@@ -106,6 +111,13 @@ export interface StrokeRow {
   round_id: string;
   seq: number;
   data: Stroke;
+}
+
+export interface MyWordRow {
+  id: string;
+  player_id: string;
+  word: string;
+  created_at: string;
 }
 
 export interface ClueBankRow {
@@ -160,6 +172,9 @@ export interface GameStore {
 
   createWordPack(row: WordPackRow): Promise<WordPackRow>;
   getWordPack(id: string): Promise<WordPackRow | null>;
+
+  addMyWord(row: MyWordRow): Promise<void>;
+  listMyWords(playerId: string, limit: number): Promise<MyWordRow[]>;
 
   addClueToBank(row: ClueBankRow): Promise<void>;
   listBankClues(word: string, limit: number): Promise<ClueBankRow[]>;

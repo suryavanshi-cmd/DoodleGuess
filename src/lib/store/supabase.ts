@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
-  ClueBankRow, FeedRow, GameStore, GuessRow, PlayerRow, RoomRow, RoundRow, RoundSecretRow, StrokeRow, WordPackRow,
+  ClueBankRow, FeedRow, MyWordRow, GameStore, GuessRow, PlayerRow, RoomRow, RoundRow, RoundSecretRow, StrokeRow, WordPackRow,
 } from "./types";
 
 const TABLES = {
@@ -13,6 +13,7 @@ const TABLES = {
   strokes: "strokes",
   packs: "word_packs",
   clueBank: "clue_bank",
+  myWords: "my_words",
 } as const;
 
 /**
@@ -186,6 +187,19 @@ export class SupabaseStore implements GameStore {
     const { data, error } = await this.db.from(TABLES.packs).select("*").eq("id", id).maybeSingle();
     if (error) throw new Error(`getWordPack: ${error.message}`);
     return (data as WordPackRow) ?? null;
+  }
+
+  async addMyWord(row: MyWordRow) {
+    // Saving the same word twice is a no-op rather than a duplicate row.
+    const { error } = await this.db.from(TABLES.myWords).upsert(row, { onConflict: "player_id,word" });
+    if (error) throw new Error(`addMyWord: ${error.message}`);
+  }
+  async listMyWords(playerId: string, limit: number) {
+    const { data, error } = await this.db
+      .from(TABLES.myWords).select("*").eq("player_id", playerId)
+      .order("created_at", { ascending: false }).limit(limit);
+    if (error) throw new Error(`listMyWords: ${error.message}`);
+    return (data ?? []) as MyWordRow[];
   }
 
   async addClueToBank(row: ClueBankRow) {

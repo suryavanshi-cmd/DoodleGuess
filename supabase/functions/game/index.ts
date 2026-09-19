@@ -120,6 +120,22 @@ async function route(request: Request): Promise<unknown> {
         // Return the new state so the drawer can draw at once.
         return game.publicState(code, auth.playerId ?? null);
       }
+      case "custom-word": {
+        const input = await body<{ roundId: string; word: string; save?: boolean }>(request);
+        const result = await game.submitCustomWord(input.roundId, auth, String(input.word ?? ""), {
+          save: Boolean(input.save),
+        });
+        return { status: result.status, state: await game.publicState(code, auth.playerId ?? null) };
+      }
+      case "custom-word-resolve": {
+        const input = await body<{ roundId: string; approve: boolean }>(request);
+        await game.resolveCustomWord(input.roundId, auth, Boolean(input.approve));
+        return game.publicState(code, auth.playerId ?? null);
+      }
+      case "my-words": {
+        const input = await body<{ word?: string }>(request);
+        return input.word ? game.saveMyWord(code, auth, input.word) : game.listMyWords(code, auth);
+      }
       case "clue": {
         const input = await body<{ roundId: string; text: string }>(request);
         await game.submitClue(input.roundId, auth, String(input.text ?? ""));

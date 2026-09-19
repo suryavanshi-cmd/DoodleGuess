@@ -55,6 +55,8 @@ export interface FeedEntry {
 }
 
 export type MatchType = "exact" | "fuzzy" | "synonym" | "miss";
+export type WordSource = "suggested" | "custom";
+export type CustomWordStatus = "pending" | "approved" | "rejected";
 
 export interface TurnResult {
   word: string;
@@ -101,6 +103,12 @@ export interface PublicState {
   serverTime: string;
   /** Present only in a direct response to the drawer — never broadcast. */
   yourWord?: string | null;
+  /** The drawer's own view of their custom word while it waits on the host. */
+  yourCustomWord?: { word: string; status: CustomWordStatus; message?: string | null } | null;
+  /** Host only, and only while a word is waiting: approving reveals it. */
+  hostApproval?: { roundId: string; word: string; drawerName: string; endsAt: string } | null;
+  /** The drawer's saved words, sent only when they ask for them. */
+  yourSavedWords?: string[] | null;
   yourChoices?: { word: string; difficulty: Difficulty }[] | null;
 }
 

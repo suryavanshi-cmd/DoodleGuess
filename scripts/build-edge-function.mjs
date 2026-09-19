@@ -19,7 +19,8 @@ const supabaseVersion = JSON.parse(
 
 const SOURCES = [
   "game/text.ts", "game/fuzzy.ts", "game/scoring.ts", "game/mask.ts", "game/filter.ts",
-  "game/words.ts", "game/settings.ts", "game/types.ts", "game/engine.ts",
+  "game/phonetics.ts", "game/clues.ts", "game/clueBank.ts", "game/synonyms.ts",
+  "game/customWord.ts", "game/words.ts", "game/settings.ts", "game/types.ts", "game/engine.ts",
   "store/types.ts", "store/supabase.ts",
   "realtime/server.ts",
 ];
@@ -67,4 +68,20 @@ for (const relativePath of SOURCES) {
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, rewrite(source, relativePath));
 }
+// A module missing from SOURCES only shows up as a Deno import error at deploy
+// time, so resolve every relative specifier here instead.
+const missing = [];
+for (const relativePath of SOURCES) {
+  const file = path.join(outDir, relativePath);
+  const source = fs.readFileSync(file, "utf8");
+  for (const match of source.matchAll(/from\s+["'](\.[^"']+)["']/g)) {
+    const target = path.resolve(path.dirname(file), match[1]);
+    if (!fs.existsSync(target)) missing.push(`${relativePath} imports ${match[1]}`);
+  }
+}
+if (missing.length) {
+  console.error(`Unresolved imports — add them to SOURCES:\n  ${missing.join("\n  ")}`);
+  process.exit(1);
+}
+
 console.log(`Generated ${SOURCES.length} modules into supabase/functions/game/lib (supabase-js ${supabaseVersion})`);

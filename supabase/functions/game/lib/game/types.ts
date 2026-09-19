@@ -58,6 +58,8 @@ export interface FeedEntry {
 }
 
 export type MatchType = "exact" | "fuzzy" | "synonym" | "miss";
+export type WordSource = "suggested" | "custom";
+export type CustomWordStatus = "pending" | "approved" | "rejected";
 
 export interface TurnResult {
   word: string;
@@ -104,6 +106,12 @@ export interface PublicState {
   serverTime: string;
 
   yourWord?: string | null;
+
+  yourCustomWord?: { word: string; status: CustomWordStatus; message?: string | null } | null;
+
+  hostApproval?: { roundId: string; word: string; drawerName: string; endsAt: string } | null;
+
+  yourSavedWords?: string[] | null;
   yourChoices?: { word: string; difficulty: Difficulty }[] | null;
 }
 

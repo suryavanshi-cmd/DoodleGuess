@@ -132,6 +132,16 @@ export function SettingsForm({ settings, disabled, onChange }: {
           checked={settings.strictFilter} disabled={disabled}
           onChange={(strictFilter) => patch({ strictFilter })}
         />
+        <Toggle
+          label="Allow custom words" hint="Drawers can type their own word instead of picking one"
+          checked={settings.allowCustomWords} disabled={disabled}
+          onChange={(allowCustomWords) => patch({ allowCustomWords })}
+        />
+        <Toggle
+          label="Host approves custom words" hint="You get a quick yes/no before the turn starts"
+          checked={settings.requireHostApproval} disabled={disabled || !settings.allowCustomWords}
+          onChange={(requireHostApproval) => patch({ requireHostApproval })}
+        />
       </div>
     </div>
   );

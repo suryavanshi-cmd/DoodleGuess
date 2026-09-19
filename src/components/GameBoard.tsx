@@ -16,6 +16,7 @@ import { ping } from "@/lib/client/sound";
 import { setMuted, useMuted } from "@/lib/client/storage";
 import { POWER_UP_COSTS } from "@/lib/game/scoring";
 import type { useRoom } from "@/lib/client/useRoom";
+import type { PublicState } from "@/lib/game/types";
 
 type Room = ReturnType<typeof useRoom>;
 
@@ -39,6 +40,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
   }, [feed, me?.id]);
 
   const round = state?.round ?? null;
+  const approval = state?.hostApproval ?? null;
   const textMode = state?.settings.gameMode === "text_clue";
   const iGuessedIt = Boolean(me?.guessedCorrect);
   const canGuess = Boolean(state?.status === "drawing" && !isDrawer && !iGuessedIt && !frozen);
@@ -164,7 +166,23 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
             <FeedDrops entries={feed} serverTime={state.serverTime} className="lg:hidden" />
 
             {isDrawer && state.status === "picking" && state.yourChoices && round ? (
-              <WordPicker choices={state.yourChoices} onPick={(index) => void actions.choose(round.id, index)} />
+              <WordPicker
+                choices={state.yourChoices}
+                onPick={(index) => void actions.choose(round.id, index)}
+                allowCustom={state.settings.allowCustomWords}
+                strictFilter={state.settings.strictFilter}
+                customWord={state.yourCustomWord ?? null}
+                onCustom={(word, save) => actions.submitCustomWord(round.id, word, save)}
+                onLoadSaved={() => actions.myWords()}
+              />
+            ) : null}
+
+            {approval ? (
+              <HostApproval
+                approval={approval}
+                serverTime={state.serverTime}
+                onResolve={(approve) => void actions.resolveCustomWord(approval.roundId, approve)}
+              />
             ) : null}
 
             {state.status === "intermission" && state.lastTurn ? (
@@ -296,6 +314,44 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** Host-only prompt: approve or reject the drawer's own word before the turn starts. */
+function HostApproval({ approval, serverTime, onResolve }: {
+  approval: NonNullable<PublicState["hostApproval"]>;
+  serverTime: string;
+  onResolve: (approve: boolean) => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Same clock trick as the round timer: trust the server, not the device.
+  const skew = Date.parse(serverTime) - now;
+  const seconds = Math.max(0, Math.ceil((Date.parse(approval.endsAt) - (now + skew)) / 1000));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm lg:absolute lg:z-40 lg:rounded-2xl">
+      <div className="animate-pop-in card max-h-full w-full max-w-sm overflow-y-auto p-4 text-center sm:p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Host check · {seconds}s</p>
+        <h3 className="mt-1 text-lg">
+          <span className="text-brand">{approval.drawerName}</span> wants to use
+        </h3>
+        <p className="mt-2 break-words rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-xl font-black normal-case">
+          {approval.word}
+        </p>
+        <p className="mt-2 text-sm text-muted">Nobody else can see this word.</p>
+        <div className="mt-3 flex gap-2">
+          <button type="button" className="btn-ghost flex-1" onClick={() => onResolve(false)}>Reject</button>
+          <button type="button" className="btn-primary flex-1" onClick={() => onResolve(true)}>Approve</button>
+        </div>
+        <p className="mt-2 text-xs text-muted">No answer in time and we pick a word for them.</p>
+      </div>
     </div>
   );
 }

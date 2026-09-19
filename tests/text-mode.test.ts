@@ -4,6 +4,26 @@ import { MemoryStore } from "@/lib/store/memory";
 import { TIMING } from "@/lib/game/settings";
 import { SYNONYM_POINTS_FACTOR } from "@/lib/game/scoring";
 import { synonymsOf } from "@/lib/game/synonyms";
+import { validateClue } from "@/lib/game/clues";
+
+/**
+ * Words are drawn at random, so a hard-coded clue is occasionally invalid for
+ * whatever came up (it might rhyme, or contain the answer). Pick the first
+ * phrasing that actually passes for this word.
+ */
+const CLUE_CANDIDATES = [
+  "Have a think about this one",
+  "Guess what this might be",
+  "Something you may well know",
+  "Take a wild stab at it",
+  "You will work this out",
+];
+
+function safeClue(word: string): string {
+  const clue = CLUE_CANDIDATES.find((candidate) => validateClue(candidate, word).ok);
+  if (!clue) throw new Error(`no valid test clue for "${word}"`);
+  return clue;
+}
 
 let clock = Date.parse("2026-01-01T12:00:00.000Z");
 const advance = (ms: number) => { clock += ms; };
@@ -75,11 +95,11 @@ describe("text-clue mode", () => {
 
   it("opens guessing once a valid clue lands, and shows it to everyone", async () => {
     const { code, auth, giverId, guessers, roundId, word } = await textRoom(engine);
-    await engine.submitClue(roundId, auth[giverId], "Something you might find nearby");
+    await engine.submitClue(roundId, auth[giverId], safeClue(word));
 
     const state = await engine.publicState(code, guessers[0]);
     expect(state.status).toBe("drawing");
-    expect(state.round?.clueText).toBe("Something you might find nearby");
+    expect(state.round?.clueText).toBe(safeClue(word));
     expect(state.round?.clueSource).toBe("human");
     expect(state.round?.endsAt).not.toBeNull();
     // The clue is public; the answer still is not.
@@ -90,7 +110,7 @@ describe("text-clue mode", () => {
 
   it("scores an exact guess in full", async () => {
     const { code, auth, giverId, guessers, roundId, word } = await textRoom(engine);
-    await engine.submitClue(roundId, auth[giverId], "Something you might find nearby");
+    await engine.submitClue(roundId, auth[giverId], safeClue(word));
     advance(3_000);
     expect((await engine.submitGuess(code, auth[guessers[0]], word)).verdict).toBe("correct");
     const state = await engine.publicState(code, null);
@@ -102,7 +122,7 @@ describe("text-clue mode", () => {
     // Keep drawing words until the chosen one has a synonym to test with.
     let room = await textRoom(engineWithSynonym);
     for (let attempt = 0; attempt < 12 && synonymsOf(room.word).length === 0; attempt++) {
-      await engineWithSynonym.submitClue(room.roundId, room.auth[room.giverId], "A thing that exists");
+      await engineWithSynonym.submitClue(room.roundId, room.auth[room.giverId], safeClue(room.word));
       advance(61_000);
       await engineWithSynonym.reconcile(room.code);
       advance(TIMING.intermissionSeconds * 1000 + 500);
@@ -118,7 +138,7 @@ describe("text-clue mode", () => {
     const synonym = synonymsOf(room.word)[0];
     if (!synonym) return; // no synonym came up in this run
 
-    await engineWithSynonym.submitClue(room.roundId, room.auth[room.giverId], "Guess what this might be");
+    await engineWithSynonym.submitClue(room.roundId, room.auth[room.giverId], safeClue(room.word));
 
     // Compare what this turn paid, not career totals: the loop above may have
     // banked points in earlier turns, which made this assertion flaky.
@@ -164,27 +184,27 @@ describe("text-clue mode", () => {
 
   it("keeps the clue and match types in the round summary", async () => {
     const { code, auth, giverId, guessers, roundId, word } = await textRoom(engine);
-    await engine.submitClue(roundId, auth[giverId], "Have a think about this one");
+    await engine.submitClue(roundId, auth[giverId], safeClue(word));
     advance(2_000);
     await engine.submitGuess(code, auth[guessers[0]], word);
     await engine.submitGuess(code, auth[guessers[1]], word);
 
     const state = await engine.publicState(code, null);
     expect(state.status).toBe("intermission");
-    expect(state.lastTurn?.clueText).toBe("Have a think about this one");
+    expect(state.lastTurn?.clueText).toBe(safeClue(word));
     expect(state.lastTurn?.clueSource).toBe("human");
     expect(state.lastTurn?.matches?.every((m) => m.matchType === "exact")).toBe(true);
   });
 
   it("remembers a human clue that worked, so the bank grows from play", async () => {
     const { code, auth, giverId, guessers, roundId, word } = await textRoom(engine);
-    await engine.submitClue(roundId, auth[giverId], "Have a think about this one");
+    await engine.submitClue(roundId, auth[giverId], safeClue(word));
     advance(2_000);
     await engine.submitGuess(code, auth[guessers[0]], word);
     await engine.submitGuess(code, auth[guessers[1]], word);
 
     const { clues } = await engine.clueSuggestions(roundId, auth[giverId]);
-    expect(clues).toContain("Have a think about this one");
+    expect(clues).toContain(safeClue(word));
   });
 
   it("leaves drawing mode untouched: no synonym credit there", async () => {
