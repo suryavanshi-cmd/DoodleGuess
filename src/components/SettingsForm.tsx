@@ -178,7 +178,7 @@ export function SettingsForm({ settings: serverSettings, disabled, onChange }: {
           onChange={(requireHostApproval) => patch({ requireHostApproval })}
         />
         <Toggle
-          label="AI guesser" hint="A classifier in your browser guesses along. Just for fun — it never scores."
+          label="AI guesser" hint="A classifier in your browser guesses along, and stays quiet on words it was never taught. Just for fun — it never scores."
           checked={settings.aiGuesser} disabled={disabled}
           onChange={(aiGuesser) => patch({ aiGuesser })}
         />

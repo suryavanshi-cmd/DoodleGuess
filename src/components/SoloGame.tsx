@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AiGuessOverlay, DoodleModelCredit, useAiGuesses } from "./AiGuess";
 import { Canvas } from "./Canvas";
 import { Confetti } from "./Confetti";
-import { loadDoodleModel, type Prediction } from "@/lib/doodle/model";
+import { labelMatches, promptableLabels } from "@/lib/doodle/labels";
+import { loadDoodleModel, type DoodleModel, type Prediction } from "@/lib/doodle/model";
 import type { Stroke } from "@/lib/game/types";
 
 /**
@@ -27,6 +28,16 @@ const SECONDS = 20;
 const VERDICT_MS = 1_600;
 
 type Phase = "loading" | "ready" | "drawing" | "won" | "lost" | "over";
+
+/** A game's worth of prompts, drawn from what the classifier can recognise. */
+function pickWords(model: DoodleModel): string[] {
+  const pool = promptableLabels(model.labels);
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, ROUNDS);
+}
 
 interface Round {
   word: string;
@@ -58,12 +69,7 @@ export function SoloGame() {
         setPhase("over");
         return;
       }
-      const pool = [...model.labels];
-      for (let i = pool.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
-      }
-      setWords(pool.slice(0, ROUNDS));
+      setWords(pickWords(model));
       setPhase("ready");
     });
     return () => { cancelled = true; };
@@ -90,14 +96,13 @@ export function SoloGame() {
     if (phaseRef.current !== "drawing") return;
     const target = words[index];
     if (!target || !guesses[0]) return;
-    const clean = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
-    if (clean(guesses[0].label) !== clean(target)) return;
+    if (!labelMatches(guesses[0].label, target)) return;
     phaseRef.current = "won";
     setPhase("won");
     setCelebrations((count) => count + 1);
   }, [words, index]);
 
-  const { guesses, thinking, available } = useAiGuesses(strokes, phase === "drawing", onGuess);
+  const { guesses, thinking, available } = useAiGuesses(strokes, phase === "drawing", { onGuess, target: word });
 
   // Record the round and move on, once the verdict has been on screen a moment.
   useEffect(() => {
@@ -124,12 +129,7 @@ export function SoloGame() {
     setPhase("loading");
     void loadDoodleModel().then((model) => {
       if (!model) return;
-      const pool = [...model.labels];
-      for (let i = pool.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
-      }
-      setWords(pool.slice(0, ROUNDS));
+      setWords(pickWords(model));
       setPhase("ready");
     });
   };

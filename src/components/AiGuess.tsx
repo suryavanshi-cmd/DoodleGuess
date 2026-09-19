@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { labelMatches, modelKnows } from "@/lib/doodle/labels";
 import { loadDoodleModel, type Prediction } from "@/lib/doodle/model";
 import { strokesToInput } from "@/lib/doodle/preprocess";
 import type { Stroke } from "@/lib/game/types";
@@ -20,6 +21,8 @@ const SLOW_BUDGET_MS = 90;
 const SLOW_STRIKES = 3;
 /** Below this the model is really just guessing, so say nothing. */
 const MIN_SCORE = 0.12;
+/** How long to wait for an idle moment before sampling anyway. */
+const IDLE_TIMEOUT_MS = 400;
 
 export interface AiGuessState {
   guesses: Prediction[];
@@ -27,32 +30,70 @@ export interface AiGuessState {
   available: boolean;
   /** There is ink on the board but nothing the model will commit to yet. */
   thinking: boolean;
+  /**
+   * False when the word being drawn is not one the model has a label for, so
+   * anything it said would be noise. The overlay renders nothing in that case.
+   */
+  knowsWord: boolean;
+}
+
+export interface AiGuessOptions {
+  /**
+   * The word being drawn.
+   *
+   * Passing this key at all is the caller saying "there is a right answer
+   * here": the model then speaks only when it has a label for that word, and
+   * a null — the word not loaded yet, or briefly missing from a state update —
+   * counts as not knowing. Silence is the safe direction. Omit the key
+   * entirely for a surface with no word to be right about.
+   */
+  target?: string | null;
+  /** Fired on every sample, so a caller can act without watching state. */
+  onGuess?: (guesses: Prediction[]) => void;
+}
+
+/** Cheap change detector: strokes only ever grow, shrink or reset wholesale. */
+function signatureOf(strokes: readonly Stroke[]): number {
+  let signature = strokes.length;
+  for (const stroke of strokes) signature = (signature * 31 + stroke.points.length) | 0;
+  return signature;
 }
 
 export function useAiGuesses(
   strokes: readonly Stroke[],
   enabled: boolean,
-  /** Fired on every sample, so a caller can act without watching state. */
-  onGuess?: (guesses: Prediction[]) => void,
+  options: AiGuessOptions = {},
 ): AiGuessState {
+  const { target = null, onGuess } = options;
+  const scored = "target" in options;
   const [guesses, setGuesses] = useState<Prediction[]>([]);
   const [available, setAvailable] = useState(true);
   const [thinking, setThinking] = useState(false);
+  const [labels, setLabels] = useState<readonly string[] | null>(null);
   // The sampler reads the latest strokes without restarting on every stroke,
   // so the interval is not torn down and rebuilt mid-drawing.
   const strokesRef = useRef<readonly Stroke[]>(strokes);
   const onGuessRef = useRef(onGuess);
+  const targetRef = useRef(target);
+  const scoredRef = useRef(scored);
+  // Read by the sampler without making it a dependency of the effect.
+  const guessesRef = useRef(guesses);
   useEffect(() => {
     strokesRef.current = strokes;
     onGuessRef.current = onGuess;
-  }, [strokes, onGuess]);
+    targetRef.current = target;
+    scoredRef.current = scored;
+    guessesRef.current = guesses;
+  }, [strokes, onGuess, target, scored, guesses]);
 
   useEffect(() => {
     if (!enabled) return;
 
     let cancelled = false;
     let strikes = 0;
+    let lastSignature = -1;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let idle = 0;
     const scratch = document.createElement("canvas");
 
     void loadDoodleModel().then((model) => {
@@ -61,12 +102,29 @@ export function useAiGuesses(
         setAvailable(false);
         return;
       }
+      setLabels(model.labels);
 
-      const tick = () => {
+      const sample = () => {
         if (cancelled) return;
+
+        // Two cheap exits before any real work. Neither the pixels nor the
+        // network are touched when the board has not changed since the last
+        // look, or when the word is not one this model could ever name.
+        const signature = signatureOf(strokesRef.current);
+        const known = !scoredRef.current || modelKnows(model.labels, targetRef.current);
+        if (!known || signature === lastSignature) {
+          if (!known && guessesRef.current.length) {
+            setGuesses([]);
+            setThinking(false);
+          }
+          schedule();
+          return;
+        }
+        lastSignature = signature;
+
         const started = performance.now();
         const input = strokesToInput(strokesRef.current, model.inputWidth, scratch);
-        const next = input ? model.predict(input).slice(0, 3).filter((p) => p.score >= MIN_SCORE) : [];
+        const next = input ? model.predict(input).filter((p) => p.score >= MIN_SCORE) : [];
         setThinking(Boolean(input) && next.length === 0);
         const elapsed = performance.now() - started;
 
@@ -81,28 +139,42 @@ export function useAiGuesses(
 
         setGuesses(next);
         onGuessRef.current?.(next);
-        timer = setTimeout(tick, SAMPLE_MS);
+        schedule();
       };
 
-      timer = setTimeout(tick, SAMPLE_MS);
+      // Sampling waits for a gap between frames, so it never lands in the
+      // middle of the browser painting a stroke the player is still drawing.
+      // The timeout keeps it honest if the gap never comes.
+      const run = () => {
+        if (cancelled) return;
+        if (typeof requestIdleCallback === "function") {
+          idle = requestIdleCallback(sample, { timeout: IDLE_TIMEOUT_MS });
+        } else {
+          sample();
+        }
+      };
+      const schedule = () => { timer = setTimeout(run, SAMPLE_MS); };
+
+      schedule();
     });
 
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      if (idle && typeof cancelIdleCallback === "function") cancelIdleCallback(idle);
     };
   }, [enabled]);
 
   // Derived rather than cleared in the effect: switching off should hide the
   // overlay on the same render, not one cascade later.
-  return { guesses: enabled ? guesses : [], available, thinking: enabled && thinking };
-}
-
-/** Loose match: the model's labels and the game's words are both plain nouns. */
-function isTarget(label: string, target: string | null): boolean {
-  if (!target) return false;
-  const clean = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
-  return clean(label) === clean(target);
+  const knowsWord = !scored || (labels !== null && modelKnows(labels, target));
+  const show = enabled && knowsWord;
+  return {
+    guesses: show ? guesses : [],
+    available,
+    thinking: show && thinking,
+    knowsWord,
+  };
 }
 
 /**
@@ -122,7 +194,7 @@ export function AiGuessOverlay({ guesses, thinking, target, className = "" }: {
 }) {
   if (guesses.length === 0 && !thinking) return null;
 
-  const got = guesses[0] && isTarget(guesses[0].label, target ?? null);
+  const got = guesses[0] && labelMatches(guesses[0].label, target ?? null);
   const message = got
     ? `Oh I know, it's ${guesses[0].label}!`
     : guesses.length > 0

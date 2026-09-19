@@ -62,6 +62,10 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
   const { guesses: aiGuesses, thinking: aiThinking } = useAiGuesses(
     strokes,
     Boolean(state?.settings.aiGuesser && state?.status === "drawing" && isDrawer),
+    // Given the word, the classifier stays silent on anything it has no label
+    // for. Most of the Gen Z pack has no Quick, Draw! category, and a confident
+    // wrong guess there is worse than no guess at all.
+    { target: state?.yourWord ?? null },
   );
   const countdown = useCountdown(
     state?.status === "drawing" ? round?.endsAt ?? null : null,

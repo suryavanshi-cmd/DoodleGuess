@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError } from "./api";
 import { joinRoomChannel, type RoomChannel } from "./realtime";
+import { keepViewerFields } from "./mergeState";
 import { clearSession, readSession, saveSession, useStoredSession, type Session } from "./storage";
 import type { Avatar, FeedEntry, PublicState, RealtimeEvent, Stroke } from "@/lib/game/types";
 
@@ -39,15 +40,6 @@ function isStale(next: PublicState, last: { current: number }): boolean {
  * approval prompt until the next authenticated fetch lands. Anything
  * publicState fills in from the viewer belongs in this list.
  */
-function keepViewerFields(previous: PublicState, incoming: PublicState): PublicState {
-  return {
-    ...incoming,
-    yourWord: previous.yourWord,
-    yourChoices: previous.yourChoices,
-    yourCustomWord: previous.yourCustomWord,
-    hostApproval: previous.hostApproval,
-  };
-}
 
 function mergeFeed(previous: FeedEntry[], incoming: FeedEntry[]): FeedEntry[] {
   const byId = new Map(previous.map((entry) => [entry.id, entry]));
@@ -97,7 +89,7 @@ export function useRoom(code: string) {
     try {
       const next = await api.state(code, sessionRef.current ?? readSession(code));
       if (!isStale(next, lastSnapshotRef)) {
-        setState(next);
+        setState((previous) => (previous ? keepViewerFields(previous, next) : next));
         setFeed((previous) => mergeFeed(previous, next.feed));
       }
       return next;
