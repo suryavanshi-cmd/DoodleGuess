@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AiGuessOverlay, DoodleModelCredit, useAiGuesses } from "./AiGuess";
 import { Canvas } from "./Canvas";
 import { Confetti } from "./Confetti";
+import { hintFor } from "@/lib/doodle/hints";
 import { labelMatches, promptableLabels } from "@/lib/doodle/labels";
 import { loadDoodleModel, type DoodleModel, type Prediction } from "@/lib/doodle/model";
 import type { Stroke } from "@/lib/game/types";
@@ -24,6 +25,16 @@ import type { Stroke } from "@/lib/game/types";
 
 const ROUNDS = 6;
 const SECONDS = 20;
+/**
+ * Solo looks at the board three times a second rather than once.
+ *
+ * This is the whole feel of the mode: you finish the line that makes it a
+ * house, and it says house. At 1.2s — fine when it is a decoration beside a
+ * multiplayer round — that same moment arrives late enough to read as lag.
+ * The board is hashed first, so the extra looks cost nothing while the hand
+ * is still.
+ */
+const SAMPLE_MS = 350;
 /** Long enough to read what the AI said and enjoy it. */
 const WIN_MS = 2_600;
 /** Shorter: there is nothing to celebrate, and the next word is the point. */
@@ -31,14 +42,20 @@ const LOSS_MS = 1_800;
 
 type Phase = "loading" | "ready" | "drawing" | "won" | "lost" | "over";
 
-/** A game's worth of prompts, drawn from what the classifier can recognise. */
-function pickWords(model: DoodleModel): string[] {
+/**
+ * Every prompt the classifier could recognise, shuffled.
+ *
+ * The whole pool rather than six of them, because a word can be swapped for
+ * another and the replacement has to come from somewhere that has not been
+ * used yet.
+ */
+function shuffledPool(model: DoodleModel): string[] {
   const pool = promptableLabels(model.labels);
   for (let i = pool.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return pool.slice(0, ROUNDS);
+  return pool;
 }
 
 interface Round {
@@ -59,6 +76,9 @@ interface Verdict {
 export function SoloGame() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [words, setWords] = useState<string[]>([]);
+  const [pool, setPool] = useState<string[]>([]);
+  /** Where the next replacement word comes from when one is swapped out. */
+  const [spare, setSpare] = useState(ROUNDS);
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<Round[]>([]);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -82,7 +102,10 @@ export function SoloGame() {
         setPhase("over");
         return;
       }
-      setWords(pickWords(model));
+      const shuffled = shuffledPool(model);
+      setPool(shuffled);
+      setWords(shuffled.slice(0, ROUNDS));
+      setSpare(ROUNDS);
       setPhase("ready");
     });
     return () => { cancelled = true; };
@@ -119,7 +142,11 @@ export function SoloGame() {
     setCelebrations((count) => count + 1);
   }, [words, index, left]);
 
-  const { guesses, thinking, available } = useAiGuesses(strokes, phase === "drawing", { onGuess, target: word });
+  const { guesses, thinking, available } = useAiGuesses(
+    strokes,
+    phase === "drawing",
+    { onGuess, target: word, intervalMs: SAMPLE_MS },
+  );
 
   // Record the round and move on, once the verdict has been on screen a moment.
   useEffect(() => {
@@ -151,12 +178,30 @@ export function SoloGame() {
     setPhase("loading");
     void loadDoodleModel().then((model) => {
       if (!model) return;
-      setWords(pickWords(model));
+      const shuffled = shuffledPool(model);
+      setPool(shuffled);
+      setWords(shuffled.slice(0, ROUNDS));
+      setSpare(ROUNDS);
       setPhase("ready");
     });
   };
 
   const wins = results.filter((round) => round.won).length;
+  const hint = hintFor(word);
+
+  /**
+   * Swap this word for one nobody has been offered yet.
+   *
+   * Only before the clock starts, so it cannot be used to duck a word that is
+   * going badly — and only forwards through the pool, so the same word never
+   * comes back round. The pool is 341 words deep against six rounds, which is
+   * more headroom than anybody will spend.
+   */
+  const changeWord = () => {
+    if (phase !== "ready" || spare >= pool.length) return;
+    setWords((current) => current.map((entry, at) => (at === index ? pool[spare] : entry)));
+    setSpare((current) => current + 1);
+  };
 
   return (
     <main className="mx-auto flex h-dvh w-full max-w-3xl flex-col gap-2 overflow-hidden px-3 py-2 sm:px-4 sm:py-3">
@@ -175,13 +220,25 @@ export function SoloGame() {
       ) : null}
 
       {phase === "ready" ? (
-        <div className="animate-pop-in flex min-h-0 flex-1 flex-col items-center justify-center gap-4 text-center">
+        <div className="animate-pop-in flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-2 text-center">
           <p className="text-lg text-muted">Draw</p>
           <p className="text-4xl font-black sm:text-5xl">{word}</p>
+          {/* What the thing is, in plain words. The word is not the puzzle. */}
+          {hint ? <p className="font-hero max-w-xs text-sm leading-relaxed text-muted">{hint}</p> : null}
           <p className="text-muted">in under {SECONDS} seconds</p>
-          <button type="button" className="btn-primary mt-2 px-10 text-lg" onClick={() => setPhase("drawing")}>
-            Got it!
-          </button>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+            <button type="button" className="btn-primary px-10 text-lg" onClick={() => setPhase("drawing")}>
+              Got it!
+            </button>
+            <button
+              type="button"
+              className="btn-ghost px-5"
+              onClick={changeWord}
+              disabled={spare >= pool.length}
+            >
+              Change word
+            </button>
+          </div>
           {!available ? (
             <p className="max-w-sm text-sm text-warning">
               The classifier could not start on this device, so nothing will be guessing. The
@@ -258,7 +315,13 @@ export function SoloGame() {
         </div>
       ) : null}
 
-      <DoodleModelCredit className="shrink-0 text-center" />
+      {/* The bottom line does one job at a time: what the word means while
+          there is a word to draw, and where the model came from otherwise. */}
+      {phase === "drawing" && hint ? (
+        <p className="font-hero shrink-0 text-center text-xs text-muted">{hint}</p>
+      ) : (
+        <DoodleModelCredit className="shrink-0 text-center" />
+      )}
     </main>
   );
 }

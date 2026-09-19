@@ -15,6 +15,18 @@ import type { Stroke } from "@/lib/game/types";
  * device, not enough ink, no canvas support. The drawing must never wait on it.
  */
 
+/**
+ * How often to look at the board.
+ *
+ * Inference costs 0.21ms and the preprocessing a little more, so the interval
+ * is not set by what the device can afford — it is set by how quickly the
+ * answer should arrive. Solo passes a much shorter one: there, the whole point
+ * is the machine reacting to your hand, and a second of silence after the line
+ * that finishes the drawing reads as lag rather than thought.
+ *
+ * The board is hashed before any work happens, so a short interval on an
+ * unchanged drawing costs nothing but the hash.
+ */
 const SAMPLE_MS = 1_200;
 /** Past this, sampling is costing the drawer frames, so it stops. */
 const SLOW_BUDGET_MS = 90;
@@ -38,6 +50,8 @@ export interface AiGuessState {
 }
 
 export interface AiGuessOptions {
+  /** Milliseconds between looks at the board. Defaults to the shared 1.2s. */
+  intervalMs?: number;
   /**
    * The word being drawn.
    *
@@ -64,7 +78,7 @@ export function useAiGuesses(
   enabled: boolean,
   options: AiGuessOptions = {},
 ): AiGuessState {
-  const { target = null, onGuess } = options;
+  const { target = null, onGuess, intervalMs = SAMPLE_MS } = options;
   const scored = "target" in options;
   const [guesses, setGuesses] = useState<Prediction[]>([]);
   const [available, setAvailable] = useState(true);
@@ -76,6 +90,7 @@ export function useAiGuesses(
   const onGuessRef = useRef(onGuess);
   const targetRef = useRef(target);
   const scoredRef = useRef(scored);
+  const intervalRef = useRef(intervalMs);
   // Read by the sampler without making it a dependency of the effect.
   const guessesRef = useRef(guesses);
   useEffect(() => {
@@ -83,8 +98,9 @@ export function useAiGuesses(
     onGuessRef.current = onGuess;
     targetRef.current = target;
     scoredRef.current = scored;
+    intervalRef.current = intervalMs;
     guessesRef.current = guesses;
-  }, [strokes, onGuess, target, scored, guesses]);
+  }, [strokes, onGuess, target, scored, intervalMs, guesses]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -148,12 +164,16 @@ export function useAiGuesses(
       const run = () => {
         if (cancelled) return;
         if (typeof requestIdleCallback === "function") {
-          idle = requestIdleCallback(sample, { timeout: IDLE_TIMEOUT_MS });
+          // The wait for an idle moment is capped at the interval itself, so a
+          // fast sampler is never held back longer than its own period.
+          idle = requestIdleCallback(sample, {
+            timeout: Math.min(IDLE_TIMEOUT_MS, intervalRef.current),
+          });
         } else {
           sample();
         }
       };
-      const schedule = () => { timer = setTimeout(run, SAMPLE_MS); };
+      const schedule = () => { timer = setTimeout(run, intervalRef.current); };
 
       schedule();
     });

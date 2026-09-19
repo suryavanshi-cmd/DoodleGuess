@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { GENZ_PACK, MIXED_PACK } from "@/lib/game/words";
 import { datasetCategory, labelMatches, modelKnows, normalizeLabel, promptableLabels } from "@/lib/doodle/labels";
+import { hintFor } from "@/lib/doodle/hints";
 
 /**
  * The classifier ships as a static asset, so nothing at build time would notice
@@ -92,6 +93,31 @@ describe("doodle classifier asset", () => {
       expect({ word, known: known.has(normalizeLabel(datasetCategory(word))) })
         .toEqual({ word, known: true });
     }
+  });
+
+  /**
+   * Solo hands out words from this list, so a label with no line explaining it
+   * is a round somebody spends staring at "goatee" instead of drawing.
+   */
+  it("can explain every word it might ask for", () => {
+    const meta = readMeta();
+    const unexplained = promptableLabels(meta.labels).filter((label) => !hintFor(label));
+    expect(unexplained).toEqual([]);
+  });
+
+  it("finds a hint however the word is punctuated", () => {
+    expect(hintFor("t-shirt")).toBe(hintFor("t shirt"));
+    expect(hintFor("The Mona Lisa")).toBe(hintFor("the mona lisa"));
+    expect(hintFor("not a real word")).toBeNull();
+    expect(hintFor(null)).toBeNull();
+  });
+
+  it("keeps the hints short enough to read at a glance", () => {
+    const meta = readMeta();
+    const longest = meta.labels
+      .map((label) => ({ label, words: (hintFor(label) ?? "").split(" ").length }))
+      .sort((a, b) => b.words - a.words)[0];
+    expect(longest.words).toBeLessThanOrEqual(12);
   });
 
   it("leaves the undrawable categories out of solo prompts", () => {
