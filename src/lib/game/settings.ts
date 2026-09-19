@@ -42,7 +42,7 @@ export const LIMITS = {
   maxPlayers: { min: 2, max: 16 },
 } as const;
 
-const PACKS: PackId[] = ["simple", "tricky", "mixed", "custom"];
+const PACKS: PackId[] = ["simple", "tricky", "genz", "mixed", "custom"];
 const MODES: GameMode[] = ["draw", "text_clue"];
 
 function clampInt(value: unknown, fallback: number, min: number, max: number): number {

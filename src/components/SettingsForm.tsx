@@ -5,7 +5,8 @@ import { LIMITS, type GameMode, type RoomSettings } from "@/lib/game/settings";
 const PACKS: { id: RoomSettings["pack"]; label: string; hint: string }[] = [
   { id: "simple", label: "Simple", hint: "Animals, food, objects — great with kids" },
   { id: "tricky", label: "Tricky", hint: "Idioms, abstract ideas, pop culture" },
-  { id: "mixed", label: "Mixed", hint: "A bit of both" },
+  { id: "genz", label: "Gen Z", hint: "Short slang — vibe, rizz, delulu" },
+  { id: "mixed", label: "Mixed", hint: "Simple plus tricky" },
 ];
 
 function Toggle({ label, hint, checked, disabled, onChange }: {
@@ -86,7 +87,7 @@ export function SettingsForm({ settings, disabled, onChange }: {
 
       <div>
         <span className="label">Word pack</span>
-        <div className="mt-1.5 grid gap-2 sm:grid-cols-3">
+        <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {PACKS.map((pack) => (
             <button
               key={pack.id} type="button" disabled={disabled}

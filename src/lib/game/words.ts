@@ -79,14 +79,36 @@ const TRICKY: Grouped = {
   },
 };
 
+
+/** Short, current slang. Opt-in: deliberately not in the mixed-age default. */
+const GENZ: Grouped = {
+  vibes: {
+    easy: ["vibe", "mood", "slay", "flex", "drip", "ick", "bop", "salty"],
+    medium: ["based", "extra", "cringe", "bussin"],
+  },
+  reactions: {
+    easy: ["bet", "sus", "tea", "mid"],
+    medium: ["ratio", "bruh", "no cap", "side eye"],
+  },
+  online: {
+    medium: ["clout", "rizz", "ghosted", "glow up"],
+    hard: ["brainrot", "doomscroll", "soft launch", "npc energy"],
+  },
+  life: {
+    hard: ["delulu", "red flag", "beige flag", "side quest", "touch grass", "main character", "situationship", "caught in 4k"],
+  },
+};
+
 export const SIMPLE_PACK: WordEntry[] = flatten(SIMPLE);
 export const TRICKY_PACK: WordEntry[] = flatten(TRICKY);
+export const GENZ_PACK: WordEntry[] = flatten(GENZ);
 export const MIXED_PACK: WordEntry[] = [...SIMPLE_PACK, ...TRICKY_PACK];
 
-export type PackId = "simple" | "tricky" | "mixed" | "custom";
+export type PackId = "simple" | "tricky" | "genz" | "mixed" | "custom";
 
 export function builtinPack(id: PackId): WordEntry[] {
   if (id === "tricky") return TRICKY_PACK;
+  if (id === "genz") return GENZ_PACK;
   if (id === "mixed") return MIXED_PACK;
   return SIMPLE_PACK;
 }

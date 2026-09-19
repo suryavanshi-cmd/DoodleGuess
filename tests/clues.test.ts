@@ -3,7 +3,7 @@ import { CLUE_BANK, bankCluesFor } from "@/lib/game/clueBank";
 import { CLUE_MAX_LENGTH, validateClue } from "@/lib/game/clues";
 import { rhymeKey, rhymes, soundex } from "@/lib/game/phonetics";
 import { isSynonym, synonymsOf } from "@/lib/game/synonyms";
-import { SIMPLE_PACK, TRICKY_PACK } from "@/lib/game/words";
+import { GENZ_PACK, SIMPLE_PACK, TRICKY_PACK } from "@/lib/game/words";
 
 describe("phonetics", () => {
   it("codes similar-sounding words the same", () => {
@@ -63,7 +63,7 @@ describe("validateClue", () => {
 });
 
 describe("bundled clue bank", () => {
-  const allWords = [...SIMPLE_PACK, ...TRICKY_PACK].map((entry) => entry.word);
+  const allWords = [...SIMPLE_PACK, ...TRICKY_PACK, ...GENZ_PACK].map((entry) => entry.word);
 
   it("covers every word in the built-in packs with at least two clues", () => {
     const missing = allWords.filter((word) => bankCluesFor(word).length < 2);

@@ -25,14 +25,15 @@
 }
 
 [data-theme="dark"] {
-  --bg: #071226;
-  --bg-glow-a: #10336e;
-  --bg-glow-b: #0a2450;
-  --surface: #0e1f3c;
-  --surface-2: #142a4e;
-  --border: #22406f;
+  /* Full dark blue: near-black navy surfaces, no grey anywhere. */
+  --bg: #030b1a;
+  --bg-glow-a: #0a2a5c;
+  --bg-glow-b: #061a3d;
+  --surface: #081529;
+  --surface-2: #0d1f3a;
+  --border: #17325c;
   --fg: #e9f1ff;
-  --fg-muted: #9ab3d9;
+  --fg-muted: #8fa9d2;
   --brand: #1877f2;
   --brand-strong: #0e5fd8;
   --brand-fg: #ffffff;
@@ -65,9 +66,9 @@ html, body {
   background-color: var(--bg);
   color: var(--fg);
   background-image:
-    radial-gradient(52rem 34rem at 10% -10%, var(--bg-glow-a), transparent 60%),
-    radial-gradient(46rem 32rem at 105% 6%, var(--bg-glow-b), transparent 58%),
-    linear-gradient(180deg, var(--bg-glow-b) 0%, var(--bg) 46%, var(--bg) 100%);
+    radial-gradient(46rem 30rem at 8% -12%, var(--bg-glow-a), transparent 55%),
+    radial-gradient(40rem 28rem at 108% 4%, var(--bg-glow-b), transparent 52%),
+    linear-gradient(180deg, var(--bg-glow-b) 0%, var(--bg) 34%, var(--bg) 100%);
   background-attachment: fixed;
   -webkit-tap-highlight-color: transparent;
 }
