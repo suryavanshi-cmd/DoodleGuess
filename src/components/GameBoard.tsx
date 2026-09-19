@@ -82,7 +82,9 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
           <p className="text-xs text-muted">
             {state.status === "picking"
               ? `${state.players.find((p) => p.id === round?.drawerId)?.name ?? "Someone"} is choosing a word…`
-              : isDrawer ? "Draw this!" : round?.shape.length ? `${round.shape.join(" + ")} letters` : ""}
+              : round?.status === "ended"
+                ? "That was the word"
+                : isDrawer ? "Draw this!" : round?.shape.length ? `${round.shape.join(" + ")} letters` : ""}
           </p>
         </div>
 

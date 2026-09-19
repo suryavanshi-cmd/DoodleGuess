@@ -129,6 +129,11 @@ export class GameEngine {
     const wanted = sanitizeAvatar(requested);
     const taken = new Set(players.filter((p) => p.connected).map((p) => `${p.avatar.emoji}|${p.avatar.color}`));
     if (!taken.has(`${wanted.emoji}|${wanted.color}`)) return wanted;
+    // Vary the character before the colour: three differently-tinted foxes are
+    // much harder to tell apart at a glance than a fox, a panda and a frog.
+    for (const emoji of AVATAR_EMOJI) {
+      if (!taken.has(`${emoji}|${wanted.color}`)) return { emoji, color: wanted.color };
+    }
     for (const emoji of AVATAR_EMOJI) {
       for (const color of AVATAR_COLORS) {
         if (!taken.has(`${emoji}|${color}`)) return { emoji, color };
