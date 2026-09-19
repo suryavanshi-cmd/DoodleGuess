@@ -7,8 +7,17 @@ export type { GameStore } from "./types";
 
 const globalForStore = globalThis as unknown as { __doodleStore?: GameStore };
 
+/**
+ * NEXT_PUBLIC_* values are inlined at build time, so a deployment that adds
+ * them and rebuilds from cache can leave the server holding a stale one.
+ * SUPABASE_URL is read at runtime and wins when present.
+ */
+export function serverSupabaseUrl(): string | undefined {
+  return process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+}
+
 export function supabaseConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return Boolean(serverSupabaseUrl() && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 /**
@@ -21,7 +30,7 @@ export function getStore(): GameStore {
   const store: GameStore = supabaseConfigured()
     ? new SupabaseStore(
         createServiceClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+          serverSupabaseUrl() as string,
           process.env.SUPABASE_SERVICE_ROLE_KEY as string,
         ),
       )

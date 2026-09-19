@@ -24,9 +24,16 @@ export function Landing() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rooms, setRooms] = useState<{ code: string; players: number; status: string }[]>([]);
+  const [missingVars, setMissingVars] = useState<string[] | null>(null);
 
   useEffect(() => {
     void api.publicRooms().then(({ rooms: list }) => setRooms(list)).catch(() => undefined);
+    // Ask the server which variables it can actually see, so a half-configured
+    // deployment names the missing one instead of guessing.
+    void fetch("/api/health", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((h: { missing?: string[] }) => setMissingVars(h.missing ?? []))
+      .catch(() => undefined);
   }, []);
 
   const create = async () => {
@@ -65,11 +72,28 @@ export function Landing() {
         <ThemeToggle />
       </header>
 
-      {!realtimeEnabled() ? (
-        <p className="mb-5 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
-          <strong>Local mode.</strong> Supabase environment variables are not set, so rooms live in this
-          server&apos;s memory and will not survive a restart or work across serverless instances.
-        </p>
+      {!realtimeEnabled() || (missingVars && missingVars.length > 0) ? (
+        <div className="mb-5 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+          <strong>Local mode.</strong> Rooms live in this server&apos;s memory, so they vanish between
+          requests and cannot be shared across devices.
+          {missingVars && missingVars.length > 0 ? (
+            <>
+              <span className="mt-1 block">Missing on this deployment:</span>
+              <ul className="mt-1 list-inside list-disc font-mono text-xs">
+                {missingVars.map((name) => <li key={name}>{name}</li>)}
+              </ul>
+              <span className="mt-1 block">
+                Add them in your host&apos;s environment settings, then redeploy <em>without</em> the build cache
+                — <code>NEXT_PUBLIC_*</code> values are baked in at build time.
+              </span>
+            </>
+          ) : (
+            <span className="mt-1 block">
+              The server has its keys but this page was built without the <code>NEXT_PUBLIC_*</code> ones.
+              Redeploy without the build cache.
+            </span>
+          )}
+        </div>
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">

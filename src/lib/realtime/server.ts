@@ -11,7 +11,7 @@ export function roomTopic(code: string): string {
  * Without Supabase the clients fall back to polling, so this is a no-op.
  */
 export async function publish(code: string, event: RealtimeEvent): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return;
   try {
