@@ -251,12 +251,10 @@ export class GameEngine {
       ? Math.floor(this.random() * totalTurns) + 1
       : null;
 
-    for (const p of players) {
-      await this.store.updatePlayer(p.id, {
-        score: 0, streak: 0, best_streak: 0, guesses_made: 0, correct_guesses: 0,
-        total_guess_ms: 0, points_from_drawing: 0, turns_drawn: 0, is_drawing: false, frozen_until: null,
-      });
-    }
+    await Promise.all(players.map((p) => this.store.updatePlayer(p.id, {
+      score: 0, streak: 0, best_streak: 0, guesses_made: 0, correct_guesses: 0,
+      total_guess_ms: 0, points_from_drawing: 0, turns_drawn: 0, is_drawing: false, frozen_until: null,
+    })));
 
     const updated = await this.store.updateRoom(room.id, {
       status: "picking",
@@ -324,22 +322,23 @@ export class GameEngine {
       reveal_timeline: [],
     });
 
-    for (const p of await this.store.listPlayers(room.id)) {
-      if (p.is_drawing !== (p.id === drawerId)) {
-        await this.store.updatePlayer(p.id, { is_drawing: p.id === drawerId });
-      }
-    }
-
-    await this.store.updateRoom(room.id, {
-      status: "picking",
-      current_round_id: roundId,
-      phase_ends_at: iso(nowMs + TIMING.pickSeconds * 1000),
-      last_activity_at: iso(nowMs),
-    });
-    const drawer = await this.store.getPlayer(drawerId);
+    const roster = await this.store.listPlayers(room.id);
+    const [, drawer] = await Promise.all([
+      Promise.all(roster
+        .filter((p) => p.is_drawing !== (p.id === drawerId))
+        .map((p) => this.store.updatePlayer(p.id, { is_drawing: p.id === drawerId }))),
+      this.store.updateRoom(room.id, {
+        status: "picking",
+        current_round_id: roundId,
+        phase_ends_at: iso(nowMs + TIMING.pickSeconds * 1000),
+        last_activity_at: iso(nowMs),
+      }),
+    ]);
+    const drawerRow = roster.find((p) => p.id === drawerId) ?? null;
+    void drawer;
     await this.pushFeed(room, {
       kind: "system",
-      text: `Round ${room.round_number} · ${drawer?.name ?? "Someone"} is choosing a word${round.double_points ? " · DOUBLE POINTS turn!" : ""}`,
+      text: `Round ${room.round_number} · ${drawerRow?.name ?? "Someone"} is choosing a word${round.double_points ? " · DOUBLE POINTS turn!" : ""}`,
     });
     await this.broadcastState(room.code);
     return round;
@@ -473,33 +472,33 @@ export class GameEngine {
     const scores: TurnResult["scores"] = [];
     const correctIds = new Set(correct.map((g) => g.player_id));
 
-    for (const p of players) {
+    await Promise.all(players.map((p) => {
       const gainedFromGuess = guesses
         .filter((g) => g.player_id === p.id)
         .reduce((sum, g) => sum + g.points_awarded, 0);
 
       if (p.id === round.drawer_id) {
         const total = p.score + drawerGain;
-        await this.store.updatePlayer(p.id, {
+        if (drawerGain > 0) scores.push({ playerId: p.id, gained: drawerGain, total });
+        return this.store.updatePlayer(p.id, {
           score: total,
           points_from_drawing: p.points_from_drawing + drawerGain,
           turns_drawn: p.turns_drawn + 1,
           is_drawing: false,
         });
-        if (drawerGain > 0) scores.push({ playerId: p.id, gained: drawerGain, total });
-        continue;
       }
 
-      if (!p.connected) continue;
+      if (!p.connected) return Promise.resolve(null);
       const outcome = correctIds.has(p.id) ? "correct" : "missed";
       const streak = nextStreak(p.streak, outcome);
-      await this.store.updatePlayer(p.id, {
+      if (gainedFromGuess > 0) scores.push({ playerId: p.id, gained: gainedFromGuess, total: p.score });
+      return this.store.updatePlayer(p.id, {
         streak,
         best_streak: Math.max(p.best_streak, streak),
         frozen_until: null,
       });
-      if (gainedFromGuess > 0) scores.push({ playerId: p.id, gained: gainedFromGuess, total: p.score });
-    }
+    }));
+    scores.sort((a, b) => b.gained - a.gained);
 
     const lastTurn: TurnResult = { word, drawerId: round.drawer_id, scores };
     await this.store.updateRoom(room.id, {
@@ -772,11 +771,18 @@ export class GameEngine {
 
   async publicState(code: string, viewerId?: string | null): Promise<PublicState> {
     const room = await this.requireRoom(code);
-    const players = await this.store.listPlayers(room.id);
-    const feed = await this.store.listFeed(room.id, FEED_LIMIT);
-    const round = room.current_round_id ? await this.store.getRound(room.current_round_id) : null;
-    const secret = round ? await this.store.getSecret(round.id) : null;
-    const guesses = round ? await this.store.listGuesses(round.id) : [];
+    // These reads are independent; awaiting them in series costs a full
+    // network round-trip each, which is the difference between a snappy
+    // board and a visibly laggy one when the database is far away.
+    const [players, feed, round] = await Promise.all([
+      this.store.listPlayers(room.id),
+      this.store.listFeed(room.id, FEED_LIMIT),
+      room.current_round_id ? this.store.getRound(room.current_round_id) : Promise.resolve(null),
+    ]);
+    const [secret, guesses] = await Promise.all([
+      round ? this.store.getSecret(round.id) : Promise.resolve(null),
+      round ? this.store.listGuesses(round.id) : Promise.resolve([]),
+    ]);
     const correctIds = new Set(guesses.filter((g) => g.is_correct).map((g) => g.player_id));
 
     const publicPlayers: PublicPlayer[] = players

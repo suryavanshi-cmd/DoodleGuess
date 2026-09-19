@@ -19,6 +19,8 @@ function getClient(): SupabaseClient | null {
   return client;
 }
 
+export type RoomChannelStatus = "connected" | "disconnected";
+
 export interface RoomChannel {
   send(event: RealtimeEvent): void;
   close(): void;
@@ -29,9 +31,16 @@ export interface RoomChannel {
  * affects scores still comes from the server. Without Supabase this returns a
  * no-op channel and the hook falls back to polling.
  */
-export function joinRoomChannel(code: string, onEvent: (event: RealtimeEvent) => void): RoomChannel {
+export function joinRoomChannel(
+  code: string,
+  onEvent: (event: RealtimeEvent) => void,
+  onStatus?: (status: RoomChannelStatus) => void,
+): RoomChannel {
   const supabase = getClient();
-  if (!supabase) return { send: () => {}, close: () => {} };
+  if (!supabase) {
+    onStatus?.("disconnected");
+    return { send: () => {}, close: () => {} };
+  }
 
   const topic = `room-${code.toUpperCase()}`;
   const channel: RealtimeChannel = supabase.channel(topic, {
@@ -42,7 +51,12 @@ export function joinRoomChannel(code: string, onEvent: (event: RealtimeEvent) =>
     const payload = message.payload as RealtimeEvent | undefined;
     if (payload?.type) onEvent(payload);
   });
-  channel.subscribe();
+  // Report real connection state, not merely whether Realtime is configured:
+  // networks that block WebSockets must fall back to polling, or a guesser
+  // would sit watching a blank canvas.
+  channel.subscribe((status) => {
+    onStatus?.(status === "SUBSCRIBED" ? "connected" : "disconnected");
+  });
 
   return {
     send(event) {

@@ -66,7 +66,9 @@ export const api = {
     request(`/api/rooms/${code}/settings`, { method: "POST", session, body: JSON.stringify({ settings }) }),
 
   choose: (code: string, session: Session, roundId: string, index: number) =>
-    request(`/api/rooms/${code}/choose`, { method: "POST", session, body: JSON.stringify({ roundId, index }) }),
+    request<import("@/lib/game/types").PublicState>(`/api/rooms/${code}/choose`, {
+      method: "POST", session, body: JSON.stringify({ roundId, index }),
+    }),
 
   guess: (code: string, session: Session, text: string) =>
     request<{ verdict: "correct" | "close" | "wrong" | "duplicate" }>(`/api/rooms/${code}/guess`, {

@@ -182,6 +182,19 @@ Its engine and store are the modules the test suite covers; the HTTP router in
 exercised against a deployed instance, so give route A or a first game on route
 B a quick smoke test.
 
+**Put the functions next to the database.** `vercel.json` pins the app to
+`bom1` (Mumbai) to match a Supabase project in `ap-south-1`. A turn involves
+many small queries, so a cross-continent hop (US functions, Indian database)
+adds seconds of lag; co-locating removes it. If your project lives elsewhere,
+change that region — or drop the field and set it under Project Settings →
+Functions.
+
+**Realtime is an accelerator, not a dependency.** Clients poll the state and
+stroke endpoints whenever the Realtime channel is not actually connected, so
+the game still works on networks that block WebSockets (many school and office
+proxies do). The fallback is verified: the full browser playtest passes with
+WebSockets blocked.
+
 Either way the Supabase project needs the migrations in `supabase/migrations/`
 applied and nothing else — no cron, no extra services. `GET /api/health`
 (route A) or `GET <function>/health` (route B) reports which store is live.

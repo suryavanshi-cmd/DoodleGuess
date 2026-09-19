@@ -117,7 +117,8 @@ async function route(request: Request): Promise<unknown> {
       case "choose": {
         const input = await body<{ roundId: string; index: number }>(request);
         await game.chooseWord(input.roundId, auth, Number(input.index));
-        return { chosen: true };
+        // Return the new state so the drawer can draw at once.
+        return game.publicState(code, auth.playerId ?? null);
       }
       case "guess": {
         const input = await body<{ text: string }>(request);

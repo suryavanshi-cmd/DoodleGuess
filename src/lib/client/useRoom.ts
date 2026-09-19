@@ -35,6 +35,8 @@ export function useRoom(code: string) {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const [frozen, setFrozen] = useState(false);
+  // Assume no live channel until one actually subscribes.
+  const [live, setLive] = useState(false);
 
   const channelRef = useRef<RoomChannel | null>(null);
   const sessionRef = useRef<Session | null>(storedSession);
@@ -129,18 +131,19 @@ export function useRoom(code: string) {
   }, [refresh]);
 
   useEffect(() => {
-    const channel = joinRoomChannel(code, onEvent);
+    const channel = joinRoomChannel(code, onEvent, (status) => setLive(status === "connected"));
     channelRef.current = channel;
     return () => {
       channel.close();
       channelRef.current = null;
+      setLive(false);
     };
   }, [code, onEvent]);
 
   useEffect(() => {
-    const interval = setInterval(() => { void refresh(); }, realtimeEnabled() ? LIVE_POLL_MS : FALLBACK_POLL_MS);
+    const interval = setInterval(() => { void refresh(); }, live ? LIVE_POLL_MS : FALLBACK_POLL_MS);
     return () => clearInterval(interval);
-  }, [refresh]);
+  }, [refresh, live]);
 
   // Strokes: fresh canvas each turn, then live events (or polling without Realtime).
   const currentRoundId = state?.round?.id ?? null;
@@ -157,14 +160,14 @@ export function useRoom(code: string) {
   }, [currentRoundId]);
 
   useEffect(() => {
-    if (realtimeEnabled() || isDrawer || !currentRoundId) return;
+    if (live || isDrawer || !currentRoundId) return;
     const interval = setInterval(() => {
       void api.strokes(currentRoundId)
         .then(({ strokes: saved }) => setStrokes(saved))
         .catch(() => undefined);
     }, STROKE_POLL_MS);
     return () => clearInterval(interval);
-  }, [currentRoundId, isDrawer]);
+  }, [currentRoundId, isDrawer, live]);
 
   const join = useCallback(async (name: string, avatar: Avatar) => {
     const saved = readSession(code);
@@ -201,7 +204,12 @@ export function useRoom(code: string) {
     updateSettings: (settings: unknown) => withSession((s) => api.settings(code, s, settings))()
       .then(() => { void refresh(); }),
     choose: (roundId: string, index: number) => withSession((s) => api.choose(code, s, roundId, index))()
-      .then(() => { void refresh(); }),
+      .then((next) => {
+        if (next) {
+          setState(next);
+          setFeed((previous) => mergeFeed(previous, next.feed));
+        }
+      }),
     guess: (text: string) => withSession((s) => api.guess(code, s, text))(),
     chat: (text: string) => withSession((s) => api.chat(code, s, text))().then(() => { void refresh(); }),
     powerUp: (kind: "hint" | "freeze", targetId?: string) =>
