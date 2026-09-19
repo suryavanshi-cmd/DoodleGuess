@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "input": {
+    "width": 28,
+    "height": 28
+  },
+  "labels": [
+    "cat",
+    "dog",
+    "fish",
+    "bird",
+    "duck",
+    "bee",
+    "frog",
+    "owl",
+    "crab",
+    "apple",
+    "pizza",
+    "cake",
+    "bread",
+    "banana",
+    "sandwich",
+    "pineapple",
+    "book",
+    "key",
+    "shoe",
+    "hat",
+    "clock",
+    "guitar",
+    "pencil",
+    "scissors",
+    "umbrella",
+    "ladder",
+    "bicycle",
+    "helicopter",
+    "lighthouse",
+    "sun",
+    "moon",
+    "tree",
+    "star",
+    "cloud",
+    "rainbow",
+    "cactus",
+    "mountain",
+    "house",
+    "tent",
+    "castle",
+    "train",
+    "windmill",
+    "sock",
+    "spoon",
+    "camera"
+  ],
+  "tensors": [
+    {
+      "name": "w1",
+      "shape": [
+        784,
+        128
+      ],
+      "offset": 0,
+      "count": 100352,
+      "scale": 0.002360415036284079
+    },
+    {
+      "name": "b1",
+      "shape": [
+        128
+      ],
+      "offset": 100352,
+      "count": 128,
+      "scale": 0.007438579882223775
+    },
+    {
+      "name": "w2",
+      "shape": [
+        128,
+        64
+      ],
+      "offset": 100480,
+      "count": 8192,
+      "scale": 0.00533256662173534
+    },
+    {
+      "name": "b2",
+      "shape": [
+        64
+      ],
+      "offset": 108672,
+      "count": 64,
+      "scale": 0.007736120167679674
+    },
+    {
+      "name": "w3",
+      "shape": [
+        64,
+        45
+      ],
+      "offset": 108736,
+      "count": 2880,
+      "scale": 0.006989594988935576
+    },
+    {
+      "name": "b3",
+      "shape": [
+        45
+      ],
+      "offset": 111616,
+      "count": 45,
+      "scale": 0.0037233465769159514
+    }
+  ],
+  "accuracy": {
+    "top1": 0.658,
+    "top3": 0.8315
+  },
+  "source": "Google Quick, Draw! dataset (open data)"
+}

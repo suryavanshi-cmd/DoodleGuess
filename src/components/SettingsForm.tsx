@@ -1,5 +1,6 @@
 "use client";
 
+import { DoodleModelCredit } from "./AiGuess";
 import { LIMITS, type GameMode, type RoomSettings } from "@/lib/game/settings";
 
 const PACKS: { id: RoomSettings["pack"]; label: string; hint: string }[] = [
@@ -142,7 +143,14 @@ export function SettingsForm({ settings, disabled, onChange }: {
           checked={settings.requireHostApproval} disabled={disabled || !settings.allowCustomWords}
           onChange={(requireHostApproval) => patch({ requireHostApproval })}
         />
+        <Toggle
+          label="AI guesser" hint="A classifier in your browser guesses along. Just for fun — it never scores."
+          checked={settings.aiGuesser} disabled={disabled}
+          onChange={(aiGuesser) => patch({ aiGuesser })}
+        />
       </div>
+
+      {settings.aiGuesser ? <DoodleModelCredit className="px-1" /> : null}
     </div>
   );
 }

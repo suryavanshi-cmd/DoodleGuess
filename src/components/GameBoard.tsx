@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Canvas } from "./Canvas";
 import { ClueBoard } from "./ClueBoard";
 import { Confetti } from "./Confetti";
+import { AiGuessOverlay, useAiGuesses } from "./AiGuess";
 import { Feed, FeedList, FeedTabs, GuessInput, type FeedTab } from "./Feed";
 import { GameHud } from "./GameHud";
 import { PlayerColumn, PlayerList } from "./PlayerList";
@@ -44,6 +45,11 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
   const round = state?.round ?? null;
   const approval = state?.hostApproval ?? null;
   // Only the drawing phase has a public deadline; everything else shows a dash.
+  // Decoration only: the classifier runs in the browser and never scores.
+  const { guesses: aiGuesses } = useAiGuesses(
+    strokes,
+    Boolean(state?.settings.aiGuesser && state?.status === "drawing"),
+  );
   const countdown = useCountdown(
     state?.status === "drawing" ? round?.endsAt ?? null : null,
     state?.serverTime ?? "",
@@ -104,6 +110,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
   /** Sits inside the board box, so it tracks the drawing and not the toolbar. */
   const boardOverlay = (
     <>
+      <AiGuessOverlay guesses={aiGuesses} />
       {state.status === "drawing" && !isDrawer ? (
         <VoteButtons onReact={(emoji) => void actions.react(emoji)} />
       ) : null}

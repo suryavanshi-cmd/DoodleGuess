@@ -1,0 +1,29 @@
+# Render blueprint. Vercel needs no equivalent file — it detects Next.js — so
+# this is the second target's copy of what the first one infers.
+#
+# Secrets are `sync: false`: Render prompts for them in the dashboard and they
+# are never stored here. .env.example is the list of what to fill in.
+services:
+  - type: web
+    name: doodleguess
+    runtime: node
+    plan: free
+    # The database is in ap-south-1 (Mumbai). Render regions are fixed at
+    # creation, so a service created elsewhere pays a cross-planet round trip on
+    # every database call — /api/health reports `dbMs` to make that visible.
+    region: singapore
+    branch: main
+    buildCommand: npm ci && npm run build
+    # Next reads PORT from the environment, which is what Render sets.
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

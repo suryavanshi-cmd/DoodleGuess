@@ -22,6 +22,8 @@ export interface RoomSettings {
   allowCustomWords: boolean;
 
   requireHostApproval: boolean;
+
+  aiGuesser: boolean;
   maxPlayers: number;
 }
 
@@ -38,6 +40,7 @@ export const DEFAULT_SETTINGS: RoomSettings = {
   strictFilter: true,
   allowCustomWords: true,
   requireHostApproval: false,
+  aiGuesser: false,
   maxPlayers: 12,
 };
 
@@ -77,6 +80,7 @@ export function normalizeSettings(input: unknown, base: RoomSettings = DEFAULT_S
     strictFilter: bool(raw.strictFilter, base.strictFilter),
     allowCustomWords: bool(raw.allowCustomWords, base.allowCustomWords),
     requireHostApproval: bool(raw.requireHostApproval, base.requireHostApproval),
+    aiGuesser: bool(raw.aiGuesser, base.aiGuesser),
     maxPlayers: clampInt(raw.maxPlayers, base.maxPlayers, LIMITS.maxPlayers.min, LIMITS.maxPlayers.max),
   };
 

@@ -29,12 +29,18 @@ export async function GET() {
   const mode = supabaseConfigured() ? "supabase" : "memory";
   let reachable = true;
   let detail: string | null = null;
+  // Timed because the number that matters is this host's round trip to the
+  // database, not a visitor's round trip to this host. A deployment sitting on
+  // the wrong side of the planet from Postgres looks fine from a browser and
+  // pays for it on every turn.
+  const started = Date.now();
   try {
     await getStore().getRoomByCode("HEALTH");
   } catch (error) {
     reachable = false;
     detail = error instanceof Error ? error.message : "unknown error";
   }
+  const dbMs = Date.now() - started;
 
   return NextResponse.json(
     {
@@ -42,6 +48,8 @@ export async function GET() {
       mode,
       reachable,
       detail,
+      /** Server-to-database round trip, in ms. Region mismatches show up here. */
+      dbMs,
       found,
       missing,
       /** Names only. Present so a "but it is connected" can be checked, not argued. */

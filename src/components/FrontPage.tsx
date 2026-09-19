@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { DoodleModelCredit } from "./AiGuess";
 import { Reveal } from "./Reveal";
 import { ThemeToggle } from "./ThemeToggle";
 import { api } from "@/lib/client/api";
@@ -204,6 +205,7 @@ export function FrontPage() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-1.5 px-4 py-8 text-sm text-muted sm:px-6">
           <p>No accounts. No ads. Nothing kept beyond the game you are playing.</p>
           <p>Built with Next.js and Supabase.</p>
+          <DoodleModelCredit />
         </div>
       </footer>
     </div>
