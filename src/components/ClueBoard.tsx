@@ -29,7 +29,7 @@ export function ClueBoard({ round, isGiver, secretWord, onSubmit, onSuggest }: {
     return (
       <div className="card flex max-h-full flex-col justify-center overflow-y-auto p-4 sm:p-6 lg:p-8">
         <p className="text-center text-sm font-semibold text-muted">Your word is</p>
-        <p className="mt-1 text-center text-3xl font-black tracking-wide sm:text-4xl">
+        <p className="font-display mt-1 text-center text-3xl tracking-wide sm:text-4xl">
           {secretWord.toUpperCase()}
         </p>
         <p className="mt-3 text-center text-sm text-muted">
@@ -118,7 +118,7 @@ export function ClueBoard({ round, isGiver, secretWord, onSubmit, onSuggest }: {
   return (
     <div className="card flex min-h-[12rem] flex-col items-center justify-center gap-3 p-5 text-center sm:min-h-[16rem] sm:gap-4 lg:min-h-[22rem] lg:p-10">
       <p className="label">{round.status === "ended" ? "The clue was" : "The clue"}</p>
-      <p className="text-balance text-2xl font-black leading-snug sm:text-4xl">
+      <p className="text-balance text-xl font-semibold leading-snug sm:text-3xl">
         {round.clueText ?? "…"}
       </p>
       {round.clueSource === "clue_bank" ? (

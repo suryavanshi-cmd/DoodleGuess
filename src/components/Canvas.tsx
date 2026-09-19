@@ -6,14 +6,15 @@ import type { ShapeKind, Stroke, StrokePoint } from "@/lib/game/types";
 
 type Tool = ShapeKind | "eraser";
 
-const TOOLS: { id: Tool; label: string; icon: string }[] = [
-  { id: "free", label: "Brush", icon: "🖌️" },
+/** Shapes live behind "More"; the pencil and eraser are always out front. */
+const SHAPE_TOOLS: { id: Tool; label: string; icon: string }[] = [
   { id: "line", label: "Line", icon: "📏" },
   { id: "rect", label: "Rectangle", icon: "▭" },
   { id: "circle", label: "Circle", icon: "⭕" },
-  { id: "fill", label: "Fill", icon: "🪣" },
-  { id: "eraser", label: "Eraser", icon: "🧽" },
 ];
+
+/** Three colours cover most of a round; the rest are one tap away. */
+const BASIC_COLORS = [PALETTE[0], "#ef4444", "#3b82f6"];
 
 /** Undo/redo depth, matching the spec's "last 20 strokes". */
 const HISTORY_LIMIT = 20;
@@ -30,6 +31,7 @@ export function Canvas({ strokes, canDraw, onStroke, onCanvas }: {
   const [color, setColor] = useState(PALETTE[0]);
   const [size, setSize] = useState(BRUSH_SIZES[1]);
   const [redoStack, setRedoStack] = useState<Stroke[]>([]);
+  const [showMore, setShowMore] = useState(false);
 
   const ctx = () => canvasRef.current?.getContext("2d", { willReadFrequently: true }) ?? null;
 
@@ -62,10 +64,6 @@ export function Canvas({ strokes, canDraw, onStroke, onCanvas }: {
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = pointFrom(event);
 
-    if (tool === "fill") {
-      commit({ id: crypto.randomUUID(), kind: "fill", color, size, points: [point] });
-      return;
-    }
     drawing.current = {
       id: crypto.randomUUID(),
       kind: tool === "eraser" ? "free" : tool,
@@ -135,51 +133,90 @@ export function Canvas({ strokes, canDraw, onStroke, onCanvas }: {
       </div>
 
       {canDraw ? (
-        <div className="card space-y-3 p-3">
-          <div className="flex flex-wrap gap-2">
-            {TOOLS.map((item) => (
-              <button
-                key={item.id} type="button" onClick={() => setTool(item.id)}
-                aria-pressed={tool === item.id} title={item.label}
-                className={`btn min-w-11 px-3 ${tool === item.id ? "bg-brand text-brand-fg" : "border border-line bg-surface-2"}`}
-              >
-                <span aria-hidden>{item.icon}</span>
-                <span className="sr-only">{item.label}</span>
-              </button>
-            ))}
-            <span className="ml-auto flex gap-2">
-              <button type="button" className="btn-ghost px-3" onClick={undo} disabled={!strokes.length} title="Undo">↩️</button>
-              <button type="button" className="btn-ghost px-3" onClick={redo} disabled={!redoStack.length} title="Redo">↪️</button>
-              <button type="button" className="btn-ghost px-3" onClick={clear} title="Clear the canvas">🗑️</button>
-            </span>
-          </div>
+        <div className="card space-y-2 p-2">
+          <div className="flex items-center gap-1">
+            <button
+              type="button" onClick={() => setTool("free")} aria-pressed={tool === "free"} title="Pencil"
+              className={`btn min-w-10 px-2 sm:min-w-11 sm:px-3 ${tool === "free" ? "bg-brand text-brand-fg" : "border border-line bg-surface-2"}`}
+            >
+              <span aria-hidden>✏️</span><span className="sr-only">Pencil</span>
+            </button>
+            <button
+              type="button" onClick={() => setTool("eraser")} aria-pressed={tool === "eraser"} title="Eraser"
+              className={`btn min-w-10 px-2 sm:min-w-11 sm:px-3 ${tool === "eraser" ? "bg-brand text-brand-fg" : "border border-line bg-surface-2"}`}
+            >
+              <span aria-hidden>🧽</span><span className="sr-only">Eraser</span>
+            </button>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {PALETTE.map((swatch) => (
+            <span className="mx-0.5 h-7 w-px shrink-0 bg-line" aria-hidden />
+
+            {BASIC_COLORS.map((swatch) => (
               <button
-                key={swatch} type="button" onClick={() => { setColor(swatch); if (tool === "eraser") setTool("free"); }}
-                aria-label={`Colour ${swatch}`} aria-pressed={color === swatch}
-                className={`h-9 w-9 rounded-lg border-2 ${color === swatch ? "border-fg scale-110" : "border-line"}`}
+                key={swatch} type="button"
+                onClick={() => { setColor(swatch); if (tool === "eraser") setTool("free"); }}
+                aria-label={`Colour ${swatch}`} aria-pressed={color === swatch && tool !== "eraser"}
+                className={`h-8 w-8 shrink-0 rounded-lg border-2 sm:h-9 sm:w-9 ${color === swatch && tool !== "eraser" ? "border-fg scale-110" : "border-line"}`}
                 style={{ background: swatch }}
               />
             ))}
-            <label className="chip cursor-pointer gap-2">
-              <span aria-hidden>🎨</span>
-              <span className="sr-only">Custom colour</span>
-              <input
-                type="color" value={color} className="h-6 w-8 cursor-pointer bg-transparent"
-                onChange={(e) => { setColor(e.target.value); if (tool === "eraser") setTool("free"); }}
-              />
-            </label>
-            <label className="ml-auto flex min-w-40 flex-1 items-center gap-2">
-              <span className="label whitespace-nowrap">Size {size}</span>
-              <input
-                type="range" min={2} max={48} value={size}
-                onChange={(e) => setSize(Number(e.target.value))}
-                className="w-full accent-[var(--brand)]"
-              />
-            </label>
+
+            <span className="ml-auto flex shrink-0 gap-1">
+              <button type="button" className="btn-ghost px-2" onClick={undo} disabled={!strokes.length} title="Undo">↩️</button>
+              <button type="button" className="btn-ghost px-2" onClick={redo} disabled={!redoStack.length} title="Redo">↪️</button>
+              <button type="button" className="btn-ghost px-2" onClick={clear} title="Clear the canvas">🗑️</button>
+              <button
+                type="button" className="btn-ghost px-2 sm:px-3" onClick={() => setShowMore((open) => !open)}
+                aria-expanded={showMore} title="More tools"
+              >
+                <span aria-hidden className="sm:hidden">{showMore ? "×" : "⋯"}</span>
+                <span className="hidden sm:inline">{showMore ? "Less" : "More"}</span>
+              </button>
+            </span>
           </div>
+
+          {showMore ? (
+            <div className="space-y-2 border-t border-line pt-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {SHAPE_TOOLS.map((item) => (
+                  <button
+                    key={item.id} type="button" onClick={() => setTool(item.id)}
+                    aria-pressed={tool === item.id} title={item.label}
+                    className={`btn min-w-11 px-3 ${tool === item.id ? "bg-brand text-brand-fg" : "border border-line bg-surface-2"}`}
+                  >
+                    <span aria-hidden>{item.icon}</span><span className="sr-only">{item.label}</span>
+                  </button>
+                ))}
+                <label className="ml-auto flex min-w-36 flex-1 items-center gap-2">
+                  <span className="label whitespace-nowrap">Size {size}</span>
+                  <input
+                    type="range" min={2} max={48} value={size}
+                    onChange={(event) => setSize(Number(event.target.value))}
+                    className="w-full accent-[var(--brand)]"
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {PALETTE.map((swatch) => (
+                  <button
+                    key={swatch} type="button"
+                    onClick={() => { setColor(swatch); if (tool === "eraser") setTool("free"); }}
+                    aria-label={`Colour ${swatch}`} aria-pressed={color === swatch && tool !== "eraser"}
+                    className={`h-8 w-8 rounded-lg border-2 ${color === swatch && tool !== "eraser" ? "border-fg scale-110" : "border-line"}`}
+                    style={{ background: swatch }}
+                  />
+                ))}
+                <label className="chip cursor-pointer gap-2">
+                  <span aria-hidden>🎨</span>
+                  <span className="sr-only">Custom colour</span>
+                  <input
+                    type="color" value={color} className="h-6 w-8 cursor-pointer bg-transparent"
+                    onChange={(event) => { setColor(event.target.value); if (tool === "eraser") setTool("free"); }}
+                  />
+                </label>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

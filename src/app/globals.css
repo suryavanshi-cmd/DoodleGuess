@@ -58,7 +58,13 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-ui), "Barlow Condensed", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), "Anton", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  /* Condensed type reads small, so the base size comes down with it. */
+  font-size: 15px;
 }
 
 html, body {
@@ -80,9 +86,18 @@ html, body {
          disabled:cursor-not-allowed disabled:opacity-50;
 }
 
+@utility font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
 @layer components {
   .card {
     @apply rounded-2xl border border-line bg-surface shadow-sm;
+  }
+  /* Headings, the wordmark and the word itself wear the display face. */
+  h1, h2, h3 {
+    @apply font-display uppercase tracking-wide;
   }
   /* Headline treatment used for the wordmark and big moments. */
   .text-gradient {

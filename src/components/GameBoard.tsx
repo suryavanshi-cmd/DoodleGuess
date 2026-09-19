@@ -98,7 +98,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
         ) : null}
 
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate font-mono text-xl font-black tracking-[0.2em] sm:text-2xl" aria-label="The word">
+          <p className="truncate font-display text-2xl tracking-[0.18em] sm:text-3xl" aria-label="The word">
             {wordDisplay || (state.status === "picking" ? "· · ·" : "")}
           </p>
           <p className="truncate text-[11px] text-muted sm:text-xs">

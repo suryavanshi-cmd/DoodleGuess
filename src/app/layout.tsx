@@ -1,8 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Anton, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 
-const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+/**
+ * Fortnite's Burbank Big Condensed is a licensed Adobe face we cannot ship,
+ * so this is the closest free pairing: Anton for heavy condensed display type
+ * and Barlow Condensed for small, dense UI text.
+ */
+const display = Anton({ weight: "400", subsets: ["latin"], variable: "--font-display" });
+const ui = Barlow_Condensed({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  variable: "--font-ui",
+});
 
 export const metadata: Metadata = {
   title: "DoodleGuess — draw, guess, laugh",
@@ -32,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className={`${geist.variable} font-sans antialiased`}>{children}</body>
+      <body className={`${ui.variable} ${display.variable} font-sans antialiased`}>{children}</body>
     </html>
   );
 }
