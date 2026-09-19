@@ -5,11 +5,12 @@ import { Canvas } from "./Canvas";
 import { ClueBoard } from "./ClueBoard";
 import { Confetti } from "./Confetti";
 import { Feed, FeedList, FeedTabs, GuessInput, type FeedTab } from "./Feed";
-import { FeedDrops } from "./FeedDrops";
 import { PlayerList, PlayerStrip } from "./PlayerList";
+import { PresenceBar } from "./PresenceBar";
 import { ReactionBar, ReactionOverlay } from "./Reactions";
 import { Replay } from "./Replay";
 import { Timer } from "./Timer";
+import { ToastFeed } from "./ToastFeed";
 import { WordPicker } from "./WordPicker";
 import { ThemeToggle } from "./ThemeToggle";
 import { ping } from "@/lib/client/sound";
@@ -162,8 +163,9 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
 
             <ReactionOverlay reactions={reactions} />
             <Confetti trigger={celebrations} />
-            {/* Phone: the feed lives here, dropping in over the board. */}
-            <FeedDrops entries={feed} serverTime={state.serverTime} className="lg:hidden" />
+            {/* Live ticker down the right of the stage. Click-through, so it
+                never intercepts a stroke; the full record is in the history. */}
+            <ToastFeed entries={feed} />
 
             {isDrawer && state.status === "picking" && state.yourChoices && round ? (
               <WordPicker
@@ -253,6 +255,10 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
         </div>
 
         <aside className="hidden min-h-0 flex-col gap-3 lg:flex">
+          <div className="card px-2.5 py-2">
+            <PresenceBar players={state.players} meId={me?.id ?? null} />
+          </div>
+
           <div className="card p-2.5">
             <PlayerList
               players={state.players}
@@ -296,6 +302,9 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
             className="animate-sheet-down card absolute inset-x-2 top-2 flex max-h-[70dvh] flex-col overflow-hidden"
             onClick={(event) => event.stopPropagation()}
           >
+            <div className="border-b border-line px-2.5 py-2">
+              <PresenceBar players={state.players} meId={me?.id ?? null} />
+            </div>
             <div className="flex items-center gap-2 pr-2">
               <div className="min-w-0 flex-1"><FeedTabs tab={tab} onTab={setTab} /></div>
               <button type="button" className="btn-ghost px-3" onClick={() => setSheetOpen(false)} aria-label="Close">✕</button>
