@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import type { FeedEntry } from "@/lib/game/types";
 
 export type FeedTab = "guesses" | "chat";
@@ -72,13 +72,19 @@ export function FeedList({ entries, tab }: { entries: FeedEntry[]; tab: FeedTab 
   );
 }
 
-export function GuessInput({ tab, onSend, disabled, placeholder, hint, className = "" }: {
+export function GuessInput({
+  tab, onSend, disabled, placeholder, hint, className = "", inputRef, onFocus, onBlur,
+}: {
   tab: FeedTab;
   onSend: (text: string) => void;
   disabled: boolean;
   placeholder: string;
   hint?: string | null;
   className?: string;
+  /** Lets the board focus the field when the player taps the bar. */
+  inputRef?: RefObject<HTMLInputElement | null>;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }) {
   const [text, setText] = useState("");
 
@@ -98,6 +104,9 @@ export function GuessInput({ tab, onSend, disabled, placeholder, hint, className
       ) : null}
       <div className="flex gap-2">
         <input
+          ref={inputRef}
+          onFocus={onFocus}
+          onBlur={onBlur}
           className="input"
           value={text}
           disabled={disabled}

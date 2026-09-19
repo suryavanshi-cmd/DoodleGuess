@@ -25,10 +25,15 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#030b1a",
+  themeColor: "#1e1e1e",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  // Android Chrome shrinks the layout viewport when the keyboard opens and
+  // reflows the page; iOS Safari overlays it instead. This makes Android do
+  // what iOS does, so the board never moves on either and one visualViewport
+  // measurement covers both.
+  interactiveWidget: "overlays-content",
 };
 
 /** Applied before paint so the chosen theme never flashes. */

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useKeyboardInset } from "@/lib/client/useKeyboardInset";
 import { Canvas } from "./Canvas";
 import { ClueBoard } from "./ClueBoard";
 import { Confetti } from "./Confetti";
@@ -29,6 +30,16 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
   const [celebrations, setCelebrations] = useState(0);
   const [hint, setHint] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  /**
+   * The phone's bottom panel has two jobs and no room to do both while a
+   * keyboard is up: "history" shows the scoreboard and the full feed, "typing"
+   * gives the keyboard the space and leaves only the guess bar. The board
+   * itself is identical in both — that is the point.
+   */
+  const [panel, setPanel] = useState<"history" | "typing">("history");
+  const keyboardInset = useKeyboardInset();
+  const guessRef = useRef<HTMLInputElement | null>(null);
+  const lastTapRef = useRef(0);
   const muted = useMuted();
   const lastCorrect = useRef<string | null>(null);
 
@@ -107,6 +118,31 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
         ? (textMode ? "CLUE THIS" : "DRAW THIS")
         : "GUESS THIS";
 
+  /**
+   * Double tap the board to put the keyboard away. Bound only when the player
+   * is not the one drawing, so it can never interrupt a stroke — the drawer's
+   * taps belong to the canvas and nothing else.
+   */
+  const onBoardPointerDown = (event: React.PointerEvent) => {
+    if (isDrawer) return;
+    // Only the board surface itself. The reaction buttons live in here too and
+    // must keep their taps.
+    if (!(event.target instanceof HTMLCanvasElement)) return;
+    // Without this the browser blurs the field on any tap outside it, so a
+    // single stray tap would close the keyboard. Dismissing is the double
+    // tap's job and nothing else's.
+    event.preventDefault();
+
+    const now = Date.now();
+    if (now - lastTapRef.current < 320) {
+      guessRef.current?.blur();
+      setPanel("history");
+      lastTapRef.current = 0;
+      return;
+    }
+    lastTapRef.current = now;
+  };
+
   /** Sits inside the board box, so it tracks the drawing and not the toolbar. */
   const boardOverlay = (
     <>
@@ -123,7 +159,13 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
     : canGuess ? "Type your guess…" : "Guessing is paused";
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-7xl flex-col overflow-hidden sm:gap-2 sm:px-3 sm:py-2 lg:gap-3 lg:px-4 lg:py-3">
+    <div
+      className="mx-auto flex h-dvh w-full max-w-7xl flex-col overflow-hidden sm:gap-2 sm:px-3 sm:py-2 lg:gap-3 lg:px-4 lg:py-3"
+      // The keyboard's height is taken out of the column rather than out of the
+      // board: the canvas is shrink-0, so the space comes from the panel that
+      // is hidden while typing and the board never resizes.
+      style={panel === "typing" && keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
+    >
       <GameHud
         seconds={countdown.seconds}
         progress={countdown.progress}
@@ -139,7 +181,10 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
 
       <div className="flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2 lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-3">
         <div className="flex min-h-0 flex-1 flex-col gap-1.5 sm:gap-2">
-          <div className="relative flex shrink-0 flex-col justify-center lg:min-h-0 lg:flex-1">
+          <div
+            className="relative flex shrink-0 flex-col justify-center lg:min-h-0 lg:flex-1"
+            onPointerDown={onBoardPointerDown}
+          >
             {textMode && round ? (
               <div className="relative">
                 <ClueBoard
@@ -228,7 +273,10 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
           {/* Phone: scoreboard and chat side by side under the board, the way
               every game of this shape reads — who is winning on the left, what
               everyone is shouting on the right. */}
-          <div className="flex min-h-0 flex-1 border-y border-line lg:hidden">
+          <div
+            className={`flex min-h-0 border-y border-line transition-opacity duration-100 lg:hidden
+              ${panel === "typing" ? "pointer-events-none hidden opacity-0" : "flex-1 opacity-100"}`}
+          >
             <div className="flex min-h-0 w-[47%] shrink-0 flex-col border-r border-line">
               <PlayerColumn players={state.players} meId={me?.id ?? null} drawerId={round?.drawerId ?? null} />
             </div>
@@ -316,6 +364,9 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
           disabled={tab === "guesses" ? !canGuess : false}
           placeholder={placeholder}
           hint={tab === "guesses" ? guessHint : null}
+          inputRef={guessRef}
+          onFocus={() => setPanel("typing")}
+          onBlur={() => setPanel("history")}
         />
       </div>
 
