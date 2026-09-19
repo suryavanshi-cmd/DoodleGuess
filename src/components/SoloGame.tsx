@@ -137,7 +137,7 @@ export function SoloGame() {
   const wins = results.filter((round) => round.won).length;
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-3 px-3 py-3 sm:px-4 sm:py-4">
+    <main className="mx-auto flex h-dvh w-full max-w-3xl flex-col gap-2 overflow-hidden px-3 py-2 sm:px-4 sm:py-3">
       <header className="flex items-center gap-3">
         <Link href="/" className="font-display text-lg font-black tracking-tight">
           <span className="text-gradient">Doodle</span>Guess
@@ -153,7 +153,7 @@ export function SoloGame() {
       ) : null}
 
       {phase === "ready" ? (
-        <div className="animate-pop-in flex flex-1 flex-col items-center justify-center gap-4 text-center">
+        <div className="animate-pop-in flex min-h-0 flex-1 flex-col items-center justify-center gap-4 text-center">
           <p className="text-lg text-muted">Draw</p>
           <p className="text-4xl font-black sm:text-5xl">{word}</p>
           <p className="text-muted">in under {SECONDS} seconds</p>
@@ -179,20 +179,26 @@ export function SoloGame() {
             </p>
           </div>
 
-          <div className="relative">
-            <Canvas
-              strokes={strokes}
-              canDraw={phase === "drawing"}
-              onStroke={(_stroke, all) => setStrokes(all)}
-              onCanvas={(_action, all) => setStrokes(all)}
-              overlay={
-                <>
-                  <AiGuessOverlay guesses={guesses} thinking={thinking} target={word} />
-                  <Confetti trigger={celebrations} />
-                </>
-              }
-            />
-          </div>
+          {/* Portrait and sized to the screen, like the reference. These strokes
+              never leave the browser, so this surface can pick its own shape
+              without touching the coordinate space the shared board uses. */}
+          <Canvas
+            strokes={strokes}
+            canDraw={phase === "drawing"}
+            onStroke={(_stroke, all) => setStrokes(all)}
+            onCanvas={(_action, all) => setStrokes(all)}
+            width={750}
+            height={1250}
+            className="flex min-h-0 flex-1 flex-col gap-2"
+            boxClassName="flex min-h-0 flex-1 items-center justify-center"
+            surfaceClassName="block h-auto max-h-full w-auto max-w-full"
+            overlay={
+              <>
+                <AiGuessOverlay guesses={guesses} thinking={thinking} target={word} />
+                <Confetti trigger={celebrations} />
+              </>
+            }
+          />
 
           {phase === "lost" ? (
             <p className="animate-pop-in text-center text-lg font-bold text-warning">
@@ -224,7 +230,7 @@ export function SoloGame() {
         </div>
       ) : null}
 
-      <DoodleModelCredit className="mt-auto text-center" />
+      <DoodleModelCredit className="shrink-0 text-center" />
     </main>
   );
 }

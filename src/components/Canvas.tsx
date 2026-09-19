@@ -19,13 +19,29 @@ const BASIC_COLORS = [PALETTE[0], "#ef4444", "#3b82f6"];
 /** Undo/redo depth, matching the spec's "last 20 strokes". */
 const HISTORY_LIMIT = 20;
 
-export function Canvas({ strokes, canDraw, onStroke, onCanvas, overlay }: {
+export function Canvas({
+  strokes, canDraw, onStroke, onCanvas, overlay,
+  width = CANVAS_W, height = CANVAS_H, surfaceClassName = "block w-full",
+  className = "space-y-2", boxClassName = "",
+}: {
   strokes: Stroke[];
   canDraw: boolean;
   onStroke: (stroke: Stroke, all: Stroke[]) => void;
   onCanvas: (action: "clear" | "undo" | "redo", all: Stroke[]) => void;
   /** Rendered inside the canvas box, so it tracks the drawing, not the tools. */
   overlay?: ReactNode;
+  /**
+   * Drawing surface size. Strokes are stored in this coordinate space, so the
+   * multiplayer board keeps the shared default — only a surface whose strokes
+   * never leave the browser, like solo, should choose its own.
+   */
+  width?: number;
+  height?: number;
+  surfaceClassName?: string;
+  /** Wrapper classes, so a caller can make the board fill a flex column. */
+  className?: string;
+  /** Extra classes on the box that holds the surface and the overlay. */
+  boxClassName?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef<Stroke | null>(null);
@@ -50,8 +66,8 @@ export function Canvas({ strokes, canDraw, onStroke, onCanvas, overlay }: {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
     return {
-      x: ((event.clientX - rect.left) / rect.width) * CANVAS_W,
-      y: ((event.clientY - rect.top) / rect.height) * CANVAS_H,
+      x: ((event.clientX - rect.left) / rect.width) * width,
+      y: ((event.clientY - rect.top) / rect.height) * height,
     };
   };
 
@@ -117,14 +133,17 @@ export function Canvas({ strokes, canDraw, onStroke, onCanvas, overlay }: {
   };
 
   return (
-    <div className="space-y-2">
-      <div className="relative overflow-hidden rounded-2xl border border-line shadow-sm" style={{ background: canvasBackground() }}>
+    <div className={className}>
+      <div
+        className={`relative overflow-hidden rounded-2xl border border-line shadow-sm ${boxClassName}`}
+        style={{ background: canvasBackground() }}
+      >
         <canvas
           ref={canvasRef}
-          width={CANVAS_W}
-          height={CANVAS_H}
-          className="canvas-surface block w-full"
-          style={{ aspectRatio: `${CANVAS_W} / ${CANVAS_H}`, cursor: canDraw ? "crosshair" : "default" }}
+          width={width}
+          height={height}
+          className={`canvas-surface ${surfaceClassName}`}
+          style={{ aspectRatio: `${width} / ${height}`, cursor: canDraw ? "crosshair" : "default" }}
           onPointerDown={handleDown}
           onPointerMove={handleMove}
           onPointerUp={handleUp}
