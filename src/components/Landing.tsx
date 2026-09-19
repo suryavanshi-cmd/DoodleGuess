@@ -78,16 +78,16 @@ export function Landing() {
       </header>
 
       {!realtimeEnabled() || (missingVars && missingVars.length > 0) ? (
-        <div className="mb-4 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
+        <div className="mb-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning sm:mb-4 sm:px-4 sm:py-3 sm:text-sm">
           <strong>Local mode.</strong> Rooms live in this server&apos;s memory, so they vanish between
           requests and cannot be shared across devices.
           {missingVars && missingVars.length > 0 ? (
             <>
               <span className="mt-1 block">Missing on this deployment:</span>
-              <ul className="mt-1 list-inside list-disc font-mono text-xs">
+              <ul className="mt-0.5 list-inside list-disc font-mono text-[11px] sm:text-xs">
                 {missingVars.map((name) => <li key={name}>{name}</li>)}
               </ul>
-              <span className="mt-1 block">
+              <span className="mt-1 hidden sm:block">
                 Add them in your host&apos;s environment settings, then redeploy <em>without</em> the build
                 cache — <code>NEXT_PUBLIC_*</code> values are baked in at build time.
               </span>
