@@ -42,3 +42,7 @@ next-env.d.ts
 
 # keep the template, ignore real env files
 !.env.example
+
+# supabase / vercel CLI scratch
+supabase/.temp
+.vercel

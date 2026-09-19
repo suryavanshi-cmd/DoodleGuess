@@ -188,6 +188,11 @@ reconnect keeps the score, and guess spam is rate-limited.
 
 ## Deploying
 
+`npm run ship` verifies, deploys the Edge Function, and uploads a prebuilt
+frontend; `npm run deploy:be` and `npm run deploy:fe` do one half each.
+[DEPLOY.md](DEPLOY.md) covers the fast cycle — what each command costs, why
+the build no longer type-checks, and how to deploy from CI instead.
+
 The frontend is a standard Next.js app — deploy it to Vercel (or anywhere that
 runs Next). There are two ways to give it an authoritative backend.
 

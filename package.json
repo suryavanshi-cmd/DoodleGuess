@@ -10,7 +10,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "build:edge": "node scripts/build-edge-function.mjs"
+    "build:edge": "node scripts/build-edge-function.mjs",
+    "verify": "eslint && tsc --noEmit && vitest run && npm run build:edge && npm run check:edge",
+    "deploy:be": "npm run build:edge && npm run check:edge && npx --yes supabase@2 functions deploy game --project-ref ${SUPABASE_PROJECT_REF:-yptqgbdvgtuyrsvznhgs}",
+    "deploy:fe": "npx --yes vercel@latest build --prod && npx --yes vercel@latest deploy --prebuilt --prod",
+    "ship": "npm run verify && npm run deploy:be && npm run deploy:fe",
+    "check:edge": "node scripts/check-edge-function.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

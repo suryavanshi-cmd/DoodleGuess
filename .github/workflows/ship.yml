@@ -1,0 +1,105 @@
+# One pass over every change: verify, then ship whichever half actually moved.
+#
+# The backend (Supabase Edge Function) and the frontend (Vercel) deploy
+# independently, so a backend-only commit never waits on a Next.js build and a
+# frontend-only commit never touches the database.
+name: Ship
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ship-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+
+jobs:
+  verify:
+    name: Lint, types, tests
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.changed.outputs.frontend }}
+      backend: ${{ steps.changed.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - run: npm run verify
+      - id: changed
+        name: Work out which half changed
+        run: |
+          if ! git rev-parse HEAD^ >/dev/null 2>&1; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only HEAD^ HEAD)
+          fe=false; be=false
+          grep -qE '^(src/|public/|package(-lock)?\.json|next\.config\.ts|tsconfig\.json|postcss\.config\.mjs|vercel\.json)' <<<"$changed" && fe=true
+          grep -qE '^(src/lib/|supabase/)' <<<"$changed" && be=true
+          echo "frontend=$fe" >> "$GITHUB_OUTPUT"
+          echo "backend=$be" >> "$GITHUB_OUTPUT"
+          echo "frontend=$fe backend=$be"
+
+  backend:
+    name: Deploy Edge Function
+    needs: verify
+    if: >-
+      github.event_name == 'push' &&
+      needs.verify.outputs.backend == 'true' &&
+      vars.DEPLOY_BACKEND == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Regenerate the Deno copy and deploy it
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: npm run deploy:be
+
+  frontend:
+    name: Deploy to Vercel
+    needs: verify
+    # Off by default: the Vercel Git integration already builds on push. Set the
+    # DEPLOY_FRONTEND repository variable to 'true' to build here instead, which
+    # skips Vercel's clone and install and uploads a finished build.
+    if: >-
+      github.event_name == 'push' &&
+      needs.verify.outputs.frontend == 'true' &&
+      vars.DEPLOY_FRONTEND == 'true'
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Restore the Turbopack build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            next-${{ hashFiles('package-lock.json') }}-
+            next-
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - run: npx --yes vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - run: npx --yes vercel@latest build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - run: npx --yes vercel@latest deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
