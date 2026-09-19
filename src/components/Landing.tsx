@@ -6,10 +6,16 @@ import { AvatarPicker } from "./AvatarPicker";
 import { SettingsForm } from "./SettingsForm";
 import { ThemeToggle } from "./ThemeToggle";
 import { api, ApiError } from "@/lib/client/api";
-import { realtimeEnabled } from "@/lib/client/realtime";
 import { DEFAULT_AVATAR, saveProfile, saveSession, useStoredProfile } from "@/lib/client/storage";
 import { DEFAULT_SETTINGS, type RoomSettings } from "@/lib/game/settings";
 import type { Avatar } from "@/lib/game/types";
+
+/** /api/health reports what it could not find; these are the names to fix. */
+const MISSING_LABELS: Record<string, string> = {
+  url: "SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL)",
+  anonKey: "SUPABASE_ANON_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY)",
+  serviceRoleKey: "SUPABASE_SERVICE_ROLE_KEY",
+};
 
 const MODE_CARDS: { id: "draw" | "text_clue"; label: string; icon: string; hint: string }[] = [
   { id: "draw", label: "Draw it", icon: "🎨", hint: "Sketch it on the canvas" },
@@ -30,6 +36,7 @@ export function Landing() {
   const [error, setError] = useState<string | null>(null);
   const [rooms, setRooms] = useState<{ code: string; players: number; status: string }[]>([]);
   const [missingVars, setMissingVars] = useState<string[] | null>(null);
+  const [localMode, setLocalMode] = useState(false);
 
   useEffect(() => {
     void api.publicRooms().then(({ rooms: list }) => setRooms(list)).catch(() => undefined);
@@ -37,7 +44,10 @@ export function Landing() {
     // deployment names the missing one instead of guessing.
     void fetch("/api/health", { cache: "no-store" })
       .then((r) => r.json())
-      .then((h: { missing?: string[] }) => setMissingVars(h.missing ?? []))
+      .then((h: { missing?: string[]; mode?: string }) => {
+        setMissingVars(h.missing ?? []);
+        setLocalMode(h.mode !== "supabase");
+      })
       .catch(() => undefined);
   }, []);
 
@@ -77,19 +87,20 @@ export function Landing() {
         <ThemeToggle />
       </header>
 
-      {!realtimeEnabled() || (missingVars && missingVars.length > 0) ? (
+      {localMode ? (
         <div className="mb-3 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning sm:mb-4 sm:px-4 sm:py-3 sm:text-sm">
           <strong>Local mode.</strong> Rooms live in this server&apos;s memory, so they vanish between
           requests and cannot be shared across devices.
           {missingVars && missingVars.length > 0 ? (
             <>
-              <span className="mt-1 block">Missing on this deployment:</span>
+              <span className="mt-1 block">This deployment has no:</span>
               <ul className="mt-0.5 list-inside list-disc font-mono text-[11px] sm:text-xs">
-                {missingVars.map((name) => <li key={name}>{name}</li>)}
+                {missingVars.map((name) => <li key={name}>{MISSING_LABELS[name] ?? name}</li>)}
               </ul>
               <span className="mt-1 hidden sm:block">
-                Add them in your host&apos;s environment settings, then redeploy <em>without</em> the build
-                cache — <code>NEXT_PUBLIC_*</code> values are baked in at build time.
+                Add them in your host&apos;s environment settings — they are read per request, so no
+                rebuild is needed. <code>/api/health</code> lists every Supabase variable the server
+                can see.
               </span>
             </>
           ) : null}

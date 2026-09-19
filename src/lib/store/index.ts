@@ -2,22 +2,24 @@ import "server-only";
 import type { GameStore } from "./types";
 import { MemoryStore } from "./memory";
 import { SupabaseStore, createServiceClient } from "./supabase";
+import { supabaseServiceKey, supabaseUrl } from "@/lib/env";
 
 export type { GameStore } from "./types";
 
 const globalForStore = globalThis as unknown as { __doodleStore?: GameStore };
 
 /**
- * NEXT_PUBLIC_* values are inlined at build time, so a deployment that adds
- * them and rebuilds from cache can leave the server holding a stale one.
- * SUPABASE_URL is read at runtime and wins when present.
+ * Read at request time, and under whichever name the host used — see
+ * src/lib/env.ts. NEXT_PUBLIC_* values are inlined at build time, so a
+ * deployment that adds them and rebuilds from cache can otherwise leave the
+ * server holding a stale one.
  */
 export function serverSupabaseUrl(): string | undefined {
-  return process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  return supabaseUrl()?.value;
 }
 
 export function supabaseConfigured(): boolean {
-  return Boolean(serverSupabaseUrl() && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return Boolean(supabaseUrl() && supabaseServiceKey());
 }
 
 /**
@@ -27,13 +29,10 @@ export function supabaseConfigured(): boolean {
  */
 export function getStore(): GameStore {
   if (globalForStore.__doodleStore) return globalForStore.__doodleStore;
-  const store: GameStore = supabaseConfigured()
-    ? new SupabaseStore(
-        createServiceClient(
-          serverSupabaseUrl() as string,
-          process.env.SUPABASE_SERVICE_ROLE_KEY as string,
-        ),
-      )
+  const url = supabaseUrl();
+  const serviceKey = supabaseServiceKey();
+  const store: GameStore = url && serviceKey
+    ? new SupabaseStore(createServiceClient(url.value, serviceKey.value))
     : new MemoryStore();
   globalForStore.__doodleStore = store;
   return store;
