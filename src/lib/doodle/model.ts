@@ -49,8 +49,12 @@ export interface Prediction {
   score: number;
 }
 
-const MODEL_URL = "/models/doodle-v2.json";
-const WEIGHTS_URL = "/models/doodle-v2.bin";
+/* Versioned in the filename, and it has to stay that way: these are served
+   immutable for a year, so new weights only reach a returning player under a
+   new name. Renaming here and renaming the files is one change, and a test
+   fails if they drift apart. */
+const MODEL_URL = "/models/doodle-v3.json";
+const WEIGHTS_URL = "/models/doodle-v3.bin";
 
 /** The overlay never shows more than this, so nothing below it is computed. */
 const TOP_K = 3;
@@ -104,7 +108,7 @@ export function loadDoodleModel(): Promise<DoodleModel | null> {
        * a blank field — about 28% of pixels are set, measured across the
        * dataset — and the first layer is 70% of the network, so skipping the
        * background removes the bulk of the arithmetic rather than a slice of
-       * it. Measured together with the two changes below: 0.58ms to 0.17ms
+       * it. Measured together with the two changes below: 0.72ms to 0.21ms
        * per inference, same answers.
        */
       const dense = (

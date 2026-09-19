@@ -11,11 +11,16 @@ so each category is fetched a slice at a time rather than in full: the complete
 set is gigabytes and a few thousand samples each is plenty.
 
 Output is a small quantised MLP that the browser loads directly:
-  public/models/doodle-v2.json  labels, shapes and dequantisation scales
-  public/models/doodle-v2.bin   int8 weights, concatenated in layer order
+  public/models/doodle-v3.json  labels, shapes and dequantisation scales
+  public/models/doodle-v3.bin   int8 weights, concatenated in layer order
+
+A retrained model must ship under a NEW name — the weights are served with a
+year-long immutable cache, so anyone who has played before would keep the old
+ones forever. Bump MODEL_NAME here and the two URLs in src/lib/doodle/model.ts
+together; tests/doodle-model.test.ts fails if they disagree.
 
 Run with:  python3 scripts/train_doodle_model.py
-Env knobs: PER_CLASS, EPOCHS, HIDDEN1, HIDDEN2, QUICKDRAW_CACHE, MODEL_OUT
+Env knobs: PER_CLASS, EPOCHS, HIDDEN1, HIDDEN2, QUICKDRAW_CACHE, MODEL_OUT, MODEL_NAME
 """
 import io
 import json
@@ -36,10 +41,11 @@ ROOT = Path(__file__).resolve().parent.parent
 # the model the app is currently serving.
 OUT = Path(os.environ.get("MODEL_OUT", ROOT / "public" / "models"))
 CACHE = Path(os.environ.get("QUICKDRAW_CACHE", "/tmp/quickdraw-cache"))
+MODEL_NAME = os.environ.get("MODEL_NAME", "doodle-v3")
 
-PER_CLASS = int(os.environ.get("PER_CLASS", "2500"))
-HIDDEN1 = int(os.environ.get("HIDDEN1", "256"))
-HIDDEN2 = int(os.environ.get("HIDDEN2", "128"))
+PER_CLASS = int(os.environ.get("PER_CLASS", "5000"))
+HIDDEN1 = int(os.environ.get("HIDDEN1", "320"))
+HIDDEN2 = int(os.environ.get("HIDDEN2", "160"))
 EPOCHS = int(os.environ.get("EPOCHS", "20"))
 BATCH = 512
 # Adam rather than the plain SGD this started with: 345 classes is a much
@@ -253,9 +259,9 @@ def main() -> int:
         blob.write(quantised.tobytes())
 
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "doodle-v2.bin").write_bytes(blob.getvalue())
-    (OUT / "doodle-v2.json").write_text(json.dumps({
-        "version": 2,
+    (OUT / f"{MODEL_NAME}.bin").write_bytes(blob.getvalue())
+    (OUT / f"{MODEL_NAME}.json").write_text(json.dumps({
+        "version": 3,
         "input": {"width": 28, "height": 28},
         "labels": names,
         "tensors": tensors,
@@ -263,8 +269,8 @@ def main() -> int:
         "source": "Google Quick, Draw! dataset (open data)",
     }, indent=2) + "\n")
 
-    size = (OUT / "doodle-v2.bin").stat().st_size
-    print(f"wrote {OUT}/doodle-v2.bin ({size / 1024:.0f} kB) and doodle-v2.json")
+    size = (OUT / f"{MODEL_NAME}.bin").stat().st_size
+    print(f"wrote {OUT}/{MODEL_NAME}.bin ({size / 1024:.0f} kB) and {MODEL_NAME}.json")
     return 0
 
 

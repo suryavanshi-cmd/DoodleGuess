@@ -11,8 +11,8 @@ import { datasetCategory, labelMatches, modelKnows, normalizeLabel, promptableLa
  * is a word this game might actually have handed somebody.
  */
 const MODELS = path.join(process.cwd(), "public", "models");
-const META = path.join(MODELS, "doodle-v2.json");
-const WEIGHTS = path.join(MODELS, "doodle-v2.bin");
+const META = path.join(MODELS, "doodle-v3.json");
+const WEIGHTS = path.join(MODELS, "doodle-v3.bin");
 
 interface ModelMeta {
   labels: string[];
