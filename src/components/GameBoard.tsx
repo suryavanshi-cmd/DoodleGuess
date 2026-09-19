@@ -57,9 +57,11 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
   const approval = state?.hostApproval ?? null;
   // Only the drawing phase has a public deadline; everything else shows a dash.
   // Decoration only: the classifier runs in the browser and never scores.
-  const { guesses: aiGuesses } = useAiGuesses(
+  // Drawer only. A guesser seeing the model name the word would be handed the
+  // answer for free, which is the entire game.
+  const { guesses: aiGuesses, thinking: aiThinking } = useAiGuesses(
     strokes,
-    Boolean(state?.settings.aiGuesser && state?.status === "drawing"),
+    Boolean(state?.settings.aiGuesser && state?.status === "drawing" && isDrawer),
   );
   const countdown = useCountdown(
     state?.status === "drawing" ? round?.endsAt ?? null : null,
@@ -146,7 +148,7 @@ export function GameBoard({ room, onLeave }: { room: Room; onLeave: () => void }
   /** Sits inside the board box, so it tracks the drawing and not the toolbar. */
   const boardOverlay = (
     <>
-      <AiGuessOverlay guesses={aiGuesses} />
+      <AiGuessOverlay guesses={aiGuesses} thinking={aiThinking} target={state.yourWord ?? null} />
       {state.status === "drawing" && !isDrawer ? (
         <VoteButtons onReact={(emoji) => void actions.react(emoji)} />
       ) : null}
