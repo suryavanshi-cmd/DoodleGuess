@@ -7,6 +7,7 @@ import { AvatarPicker } from "./AvatarPicker";
 import { SettingsForm } from "./SettingsForm";
 import { ThemeToggle } from "./ThemeToggle";
 import { api, ApiError } from "@/lib/client/api";
+import { nameFor } from "@/lib/client/characters";
 import { DEFAULT_AVATAR, saveProfile, saveSession, useStoredProfile } from "@/lib/client/storage";
 import { DEFAULT_SETTINGS, type RoomSettings } from "@/lib/game/settings";
 import type { Avatar } from "@/lib/game/types";
@@ -52,12 +53,18 @@ export function Landing() {
       .catch(() => undefined);
   }, []);
 
+  // Nobody has to type to play. An empty field means "call me after my
+  // character", which is what the front page already does and what keeps the
+  // primary button from sitting there greyed out as the first thing anyone
+  // sees on this page.
+  const playerName = name.trim() || nameFor(avatar);
+
   const create = async () => {
     setBusy(true);
     setError(null);
     try {
-      const result = await api.createRoom({ name, avatar, settings });
-      saveProfile({ name, avatar });
+      const result = await api.createRoom({ name: playerName, avatar, settings });
+      saveProfile({ name: playerName, avatar });
       saveSession(result.code, { playerId: result.playerId, token: result.token });
       router.push(`/room/${result.code}`);
     } catch (err) {
@@ -72,7 +79,7 @@ export function Landing() {
       setError("Room codes are 6 characters, like QK4T7M.");
       return;
     }
-    saveProfile({ name, avatar });
+    saveProfile({ name: playerName, avatar });
     router.push(`/room/${clean}`);
   };
 
@@ -139,12 +146,12 @@ export function Landing() {
               <label className="label" htmlFor="name">Your nickname</label>
               <input
                 id="name" className="input mt-1" value={name} maxLength={16}
-                placeholder="e.g. Pixel" onChange={(e) => setDraftName(e.target.value)}
+                placeholder={nameFor(avatar)} onChange={(e) => setDraftName(e.target.value)}
               />
             </div>
             <button
               type="button" className="btn-primary text-lg sm:px-8"
-              disabled={busy || name.trim().length < 2} onClick={create}
+              disabled={busy} onClick={create}
             >
               {busy ? "Creating…" : "Create room"}
             </button>
@@ -156,7 +163,8 @@ export function Landing() {
 
           <button
             type="button"
-            className="mt-3 text-sm font-semibold text-brand"
+            // Padded to a real touch target: as bare text this was 19px tall.
+            className="-mx-1 mt-2 inline-flex min-h-11 items-center px-1 text-sm font-semibold text-brand"
             onClick={() => setShowSettings((current) => !current)}
           >
             {showSettings ? "Hide game settings" : "Game settings"} · {settings.rounds} rounds · {settings.turnSeconds}s · {settings.pack}

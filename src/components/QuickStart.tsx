@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api, ApiError } from "@/lib/client/api";
 import { saveProfile, saveSession, useStoredProfile } from "@/lib/client/storage";
+import { CHARACTERS, type Character } from "@/lib/client/characters";
 import { DEFAULT_SETTINGS } from "@/lib/game/settings";
 
 /**
@@ -19,28 +20,6 @@ import { DEFAULT_SETTINGS } from "@/lib/game/settings";
  * It opens over the page rather than navigating, so the button that summoned
  * it never scrolls away underneath.
  */
-
-interface Character {
-  emoji: string;
-  /** Doubles as the default nickname, which is why they are all one word. */
-  name: string;
-  color: string;
-}
-
-const CHARACTERS: Character[] = [
-  { emoji: "🦊", name: "Fox", color: "#f97316" },
-  { emoji: "🐼", name: "Panda", color: "#14b8a6" },
-  { emoji: "🐸", name: "Frog", color: "#22c55e" },
-  { emoji: "🐙", name: "Octo", color: "#6366f1" },
-  { emoji: "🦖", name: "Rex", color: "#eab308" },
-  { emoji: "🐝", name: "Bee", color: "#f97316" },
-  { emoji: "🦄", name: "Unicorn", color: "#a855f7" },
-  { emoji: "🐧", name: "Penguin", color: "#06b6d4" },
-  { emoji: "🐨", name: "Koala", color: "#14b8a6" },
-  { emoji: "🦉", name: "Owl", color: "#ec4899" },
-  { emoji: "🐳", name: "Whale", color: "#06b6d4" },
-  { emoji: "🚀", name: "Rocket", color: "#6366f1" },
-];
 
 export function QuickStart({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
@@ -102,9 +81,11 @@ export function QuickStart({ open, onClose }: { open: boolean; onClose: () => vo
               Pick a character
             </h2>
             <p className="mt-1 text-sm text-muted">
-              {storedProfile?.name
-                ? `You will join as ${storedProfile.name}. Your room opens straight away.`
-                : "That is the whole setup. Your room opens straight away."}
+              {busy
+                ? "Opening your room…"
+                : storedProfile?.name
+                  ? `You will join as ${storedProfile.name}. Your room opens straight away.`
+                  : "That is the whole setup. Your room opens straight away."}
             </p>
           </div>
           <button

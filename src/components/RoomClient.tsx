@@ -5,6 +5,7 @@ import { GameBoard } from "./GameBoard";
 import { JoinCard } from "./JoinCard";
 import { Lobby } from "./Lobby";
 import { Recap } from "./Recap";
+import { RoomSkeleton } from "./RoomSkeleton";
 import { useRoom } from "@/lib/client/useRoom";
 
 export function RoomClient({ code }: { code: string }) {
@@ -28,11 +29,7 @@ export function RoomClient({ code }: { code: string }) {
   }
 
   if (room.phase === "loading" || !room.state) {
-    return (
-      <main className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-muted">Loading room {code}…</p>
-      </main>
-    );
+    return <RoomSkeleton code={code} />;
   }
 
   if (room.phase === "needs-join") {

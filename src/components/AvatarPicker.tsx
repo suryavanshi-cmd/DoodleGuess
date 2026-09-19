@@ -1,8 +1,11 @@
 "use client";
 
+import { CHARACTERS } from "@/lib/client/characters";
 import type { Avatar } from "@/lib/game/types";
 
-const EMOJI = ["🦊", "🐼", "🐸", "🐙", "🦖", "🐝", "🦄", "🐧", "🐨", "🦉", "🐳", "🍕", "🚀", "🌈"];
+// One cast, shared with the front page's one-tap grid, so every face has a
+// name behind it and nobody is ever forced to invent a nickname.
+const EMOJI = CHARACTERS.map((character) => character.emoji);
 const COLORS = ["#f97316", "#14b8a6", "#6366f1", "#ec4899", "#22c55e", "#eab308", "#06b6d4", "#a855f7"];
 
 export function AvatarBadge({ avatar, size = 40, ring }: { avatar: Avatar; size?: number; ring?: boolean }) {
